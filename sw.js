@@ -1,12 +1,12 @@
 // sw.js — cache-busted & scoped for GitHub Pages
 const SCOPE = '/YourDamnBudget/';
-const CACHE = 'ydb-v3'; // bump on each release
+const CACHE = 'ydb-v4'; // bumped from v3 → v4
 
 const ASSETS = [
   `${SCOPE}`, `${SCOPE}index.html`, `${SCOPE}styles.css`,
   `${SCOPE}app.js`, `${SCOPE}engine.js`, `${SCOPE}storage.js`,
   `${SCOPE}manifest.webmanifest`,
-  `${SCOPE}icons/icon-192.png`, `${SCOPE}icons/icon-512.png`
+  `${SCOPE}icons/flat-192.png`, `${SCOPE}icons/flat-512.png`
 ];
 
 self.addEventListener('install', e => {
