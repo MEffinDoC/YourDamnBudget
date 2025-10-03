@@ -1,10 +1,11 @@
 // sw.js — cache-busted & scoped for GitHub Pages
 const SCOPE = '/YourDamnBudget/';
-const CACHE = 'ydb-v5'; // bumped for nav tweak
+const CACHE = 'ydb-v7'; // bumped for nav fixes
 
 const ASSETS = [
-  `${SCOPE}`, `${SCOPE}index.html`, `${SCOPE}styles.css`,
-  `${SCOPE}app.js`, `${SCOPE}engine.js`, `${SCOPE}storage.js`,
+  `${SCOPE}`, `${SCOPE}index.html`,
+  `${SCOPE}styles.css?v=7`, `${SCOPE}nav.js?v=7`,
+  `${SCOPE}app.js?v=7`, `${SCOPE}engine.js`, `${SCOPE}storage.js`,
   `${SCOPE}manifest.webmanifest`,
   `${SCOPE}icons/flat-192.png`, `${SCOPE}icons/flat-512.png`
 ];
