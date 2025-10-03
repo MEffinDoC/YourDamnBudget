@@ -1,9 +1,61 @@
-const KEY='ydb_v3'; const BACKUPS_KEY='ydb_backups_v1';
-export function load(){const raw=localStorage.getItem(KEY);if(!raw){return{meta:{onboarded:false},user:{timezone:'America/Chicago',splurgePerWeek:50,paydayWeekday:5},payRules:{schema:'federal',baseHourly:20,withholdingRatio:0.2,overtimeMultiplier:1.5},timesheets:[],bills:[],envelopes:[{id:1,name:'Groceries',weeklyTarget:120},{id:2,name:'Gas',weeklyTarget:50},{id:3,name:'Fun',weeklyTarget:25}],loans:[],events:[],paid:[],bank:{currentBalance:0}};}try{const s=JSON.parse(raw);s.meta=s.meta||{onboarded:false};if(!s.user)s.user={};if(typeof s.user.paydayWeekday!=='number')s.user.paydayWeekday=5;if(typeof s.user.splurgePerWeek!=='number')s.user.splurgePerWeek=50;if(!Array.isArray(s.paid))s.paid=[];if(!s.bank)s.bank={currentBalance:0};s.payRules=s.payRules||{schema:'federal',baseHourly:20,withholdingRatio:0.2};return s;}catch{return{}}}
-export function save(s){localStorage.setItem(KEY,JSON.stringify(s));}
-function nowStamp(){const d=new Date();const p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;}
-export function makeBackup(name){const b=getBackups();const id=Date.now().toString(36);b.unshift({id,name:name&&name.trim()?name.trim():`Backup ${nowStamp()}`,ts:Date.now(),data:localStorage.getItem(KEY)||'{}'});while(b.length>25)b.pop();localStorage.setItem(BACKUPS_KEY,JSON.stringify(b));return id;}
-export function getBackups(){try{const r=localStorage.getItem(BACKUPS_KEY);return r?JSON.parse(r):[]}catch{return[]}}
-export function restoreBackup(id){const b=getBackups();const x=b.find(v=>v.id===id);if(!x)return false;localStorage.setItem(KEY,x.data);return true;}
-export function deleteBackup(id){const b=getBackups().filter(v=>v.id!==id);localStorage.setItem(BACKUPS_KEY,JSON.stringify(b));}
-export function importFile(file,cb){const r=new FileReader();r.onload=()=>{try{localStorage.setItem(KEY,r.result);cb(true);}catch(e){console.error(e);cb(false)}};r.readAsText(file);}
+// storage.js — namespaced localStorage, backups, schema version
+const REPO = (location.pathname.split('/')[1] || 'root').toLowerCase(); // "yourdamnbudget"
+const STORAGE_KEY = `ydb:${REPO}:v3`;
+const BAK_KEY     = `ydb:${REPO}:backups:v1`;
+const SCHEMA = 3;
+
+function defaults(){
+  return {
+    schemaVersion: SCHEMA,
+    meta:{onboarded:false},
+    user:{paydayWeekday:5, faFundsPerWeek:50},
+    bank:{currentBalance:0},
+    bills:[], loans:[], envelopes:[], events:[], timesheets:[],
+    payRules:{schema:'federal', baseHourly:20, withholdingRatio:0.2}
+  };
+}
+
+export function load(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw){
+    const d = defaults(); localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); return d;
+  }
+  let obj; try{ obj = JSON.parse(raw); }catch{ obj = defaults(); }
+  if(!obj.schemaVersion || obj.schemaVersion < SCHEMA){
+    const list = JSON.parse(localStorage.getItem(BAK_KEY) || '[]');
+    list.unshift({id:Date.now().toString(36), name:'Auto-backup (migrate)', ts:Date.now(), data:obj});
+    localStorage.setItem(BAK_KEY, JSON.stringify(list.slice(0,20)));
+    if(obj.user && obj.user.splurgePerWeek!=null && obj.user.faFundsPerWeek==null){
+      obj.user.faFundsPerWeek = obj.user.splurgePerWeek; delete obj.user.splurgePerWeek;
+    }
+    obj.schemaVersion = SCHEMA;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  }
+  return obj;
+}
+
+export function save(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+export function makeBackup(name=''){
+  const list = JSON.parse(localStorage.getItem(BAK_KEY) || '[]');
+  const id = Date.now().toString(36);
+  list.unshift({id,name:name||'Backup',ts:Date.now(),data:JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')});
+  localStorage.setItem(BAK_KEY, JSON.stringify(list.slice(0,20)));
+  return id;
+}
+export function getBackups(){ return (JSON.parse(localStorage.getItem(BAK_KEY) || '[]')).map(b=>({id:b.id,name:b.name,ts:b.ts})); }
+export function restoreBackup(id){
+  const list = JSON.parse(localStorage.getItem(BAK_KEY) || '[]');
+  const b = list.find(x=>x.id===id); if(!b) return false;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(b.data)); return true;
+}
+export function deleteBackup(id){
+  const list = JSON.parse(localStorage.getItem(BAK_KEY) || '[]').filter(x=>x.id!==id);
+  localStorage.setItem(BAK_KEY, JSON.stringify(list));
+}
+export function importFile(file, cb){
+  const r = new FileReader();
+  r.onload = ()=>{ try{ const data = JSON.parse(r.result); localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); cb?.(true);}catch{cb?.(false)} };
+  r.onerror = ()=>cb?.(false);
+  r.readAsText(file);
+}
