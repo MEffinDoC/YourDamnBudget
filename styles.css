@@ -1,6 +1,9 @@
 :root{
   --bg:#0b2034; --panel:#101f33; --ink:#e6f1ff; --muted:#94a3b8;
   --accent:#0ea5a8; --accent-ink:#032a2c; --danger:#ef4444; --ok:#22c55e;
+
+  /* computed at runtime; fallback if JS hasn’t run yet */
+  --tabw: 110px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
@@ -10,7 +13,7 @@ img{display:block;max-width:100%}
 .topbar .title{font-weight:700;font-size:18px;letter-spacing:.2px;display:inline-block;vertical-align:middle;margin-left:8px}
 .topbar .brand{width:28px;height:28px;border-radius:8px;display:inline-block;vertical-align:middle}
 
-/* NAV: tighter, scroll-snap, edge fade, with a visible “peek” of next tab */
+/* NAV rail: scroll-snap + edge fade + peek */
 .tabs{
   margin-top:8px;
   display:flex; gap:8px;
@@ -19,26 +22,25 @@ img{display:block;max-width:100%}
   scrollbar-width:none;
   scroll-snap-type:x mandatory;
 
-  padding-right:40px;                /* make space for the peek */
-  /* Fade edges for “there’s more” visual cue */
+  padding-right:40px; /* space that creates a visible peek */
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
 }
 .tabs::-webkit-scrollbar{display:none}
-/* spacer to force a half-cut peek at the right */
-.tabs::after{ content:""; flex:0 0 40px; }
+.tabs::after{ content:""; flex:0 0 40px; } /* forces half-cut peek on the right */
 
-/* Tighter tabs */
+/* Tabs: width unified by --tabw (set by JS to largest needed) */
 .tab{
-  flex:0 0 auto;
+  flex:0 0 var(--tabw);
+  max-width: var(--tabw);
   background:#0e2136; border:1px solid #17304e; color:var(--ink);
   border-radius:12px;
-  padding:5px 6px;                   /* was 6px 8px */
+  padding:5px 6px;
   text-align:center;
-  min-width:84px;                    /* was 96px */
-  font-size:11px;                    /* was 12px */
+  font-size:11px;
   line-height:1.1;
   scroll-snap-align:start;
+  white-space:nowrap;
 }
 .tab span{display:block;color:#ffffff;font-size:9px;margin-top:2px} /* hint = white & smaller */
 .tab.active{outline:2px solid var(--accent);background:#0e2830}
