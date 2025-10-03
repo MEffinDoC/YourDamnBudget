@@ -10,7 +10,7 @@ img{display:block;max-width:100%}
 .topbar .title{font-weight:700;font-size:18px;letter-spacing:.2px;display:inline-block;vertical-align:middle;margin-left:8px}
 .topbar .brand{width:28px;height:28px;border-radius:8px;display:inline-block;vertical-align:middle}
 
-/* NAV: tighter, scroll-snap, fade edges to hint there’s more */
+/* NAV: tighter, scroll-snap, edge fade, with a visible “peek” of next tab */
 .tabs{
   margin-top:8px;
   display:flex; gap:8px;
@@ -18,23 +18,29 @@ img{display:block;max-width:100%}
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
   scroll-snap-type:x mandatory;
-  /* fade edges */
+
+  padding-right:40px;                /* make space for the peek */
+  /* Fade edges for “there’s more” visual cue */
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
 }
 .tabs::-webkit-scrollbar{display:none}
+/* spacer to force a half-cut peek at the right */
+.tabs::after{ content:""; flex:0 0 40px; }
+
+/* Tighter tabs */
 .tab{
   flex:0 0 auto;
   background:#0e2136; border:1px solid #17304e; color:var(--ink);
   border-radius:12px;
-  padding:6px 8px;                 /* was 8px 10px */
+  padding:5px 6px;                   /* was 6px 8px */
   text-align:center;
-  min-width:96px;                  /* was 120px */
-  font-size:12px;                  /* was 13px */
+  min-width:84px;                    /* was 96px */
+  font-size:11px;                    /* was 12px */
   line-height:1.1;
   scroll-snap-align:start;
 }
-.tab span{display:block;color:#ffffff;font-size:10px;margin-top:2px} /* hint = white & smaller */
+.tab span{display:block;color:#ffffff;font-size:9px;margin-top:2px} /* hint = white & smaller */
 .tab.active{outline:2px solid var(--accent);background:#0e2830}
 
 .container{padding:12px;max-width:1100px;margin:0 auto}
