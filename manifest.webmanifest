@@ -8,7 +8,7 @@
   "background_color": "#0b2034",
   "theme_color": "#0b2034",
   "icons": [
-    {"src":"/YourDamnBudget/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"/YourDamnBudget/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    { "src": "/YourDamnBudget/icons/flat-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/YourDamnBudget/icons/flat-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
