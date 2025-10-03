@@ -1,6 +1,6 @@
 // sw.js — cache-busted & scoped for GitHub Pages
 const SCOPE = '/YourDamnBudget/';
-const CACHE = 'ydb-v4'; // bumped from v3 → v4
+const CACHE = 'ydb-v5'; // bumped for nav tweak
 
 const ASSETS = [
   `${SCOPE}`, `${SCOPE}index.html`, `${SCOPE}styles.css`,
