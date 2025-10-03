@@ -1,14 +1,12 @@
 {
   "name": "Your Damn Budget",
   "short_name": "YDB",
-  "description": "Budgeting that tells you the truth. All data stays on-device.",
-  "start_url": "/YourDamnBudget/",
-  "scope": "/YourDamnBudget/",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#0b2034",
-  "theme_color": "#0b2034",
+  "background_color": "#0B1220",
+  "theme_color": "#0EA5E9",
   "icons": [
-    { "src": "/YourDamnBudget/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/YourDamnBudget/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icons/flat-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/flat-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
