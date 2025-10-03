@@ -1,11 +1,152 @@
+// engine.js — projections + pay rules
+export function project(state){
+  const weeks = [];
+  const now = new Date();
+  for(let i=0;i<12;i++){
+    const weekStart = new Date(now); weekStart.setDate(now.getDate() + i*7);
+    const income = estimateWeeklyIncome(state);
+    const mustPays = weeklyBillsPortion(state, weekStart);
+    const variables = (state.envelopes||[]).reduce((s,e)=>s+Number(e.weeklyTarget||0),0);
+    const faf = Number(state.user?.faFundsPerWeek||0);
+    const free = income - (mustPays + variables + faf);
+    weeks.push({weekStart, income, mustPays, variables, splurge:faf, freeToSpend:free});
+  }
+  return weeks;
+}
 
-// (engine.js content was built in the previous step; using the same as described.)
-export function mondayOf(date){const d=new Date(date);const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);d.setHours(0,0,0,0);return d;}
-export function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
-function isInWeek(d,weekStart){const start=new Date(weekStart);const end=addDays(start,7);return d>=start&&d<end;}
-function applyOvertimeForDay(hours,rules,base){let gross=0;let remaining=hours;const daily=(rules.daily||[]).slice().sort((a,b)=>a.threshold-b.threshold);let prev=0;for(const seg of daily){const span=Math.max(0,Math.min(hours,seg.threshold)-prev);if(span>0){gross+=span*base*(seg.multiplier||1);prev=seg.threshold;remaining=hours-prev;}}const lastMul=daily.length?daily[daily.length-1].multiplier:1;if(remaining>0){gross+=remaining*base*(rules.dailyAboveMultiplier||lastMul||1);}return gross;}
-function summarizeHours(weekDays){const days=weekDays||[0,0,0,0,0,0,0];const total=days.reduce((a,b)=>a+Number(b||0),0);return{days,total};}
-export function computeWeekPay(weekDays,pr){const base=pr.baseHourly||20;const wh=pr.withholdingRatio??0.2;const schema=pr.schema||'federal';let rules;if(schema==='federal'){rules={weekly:{threshold:40,multiplier:1.5},daily:[]};}else if(schema==='california'){rules={weekly:{threshold:40,multiplier:1.5},daily:[{threshold:8,multiplier:1},{threshold:12,multiplier:1.5}],dailyAboveMultiplier:2.0,caDoubleAfter:12,caSeventh:true};}else if(schema==='alaska'){rules={weekly:{threshold:40,multiplier:1.5},daily:[{threshold:8,multiplier:1}],dailyAboveMultiplier:1.5};}else if(schema==='colorado'){rules={weekly:{threshold:40,multiplier:1.5},daily:[{threshold:12,multiplier:1}],dailyAboveMultiplier:1.5};}else if(schema==='nevada'){rules={weekly:{threshold:40,multiplier:1.5},daily:pr.nvDaily8?[{threshold:8,multiplier:1}]:[],dailyAboveMultiplier:1.5};}else if(schema==='custom'){rules={weekly:pr.custom?.weekly||{threshold:40,multiplier:1.5},daily:pr.custom?.daily||[],dailyAboveMultiplier:pr.custom?.dailyAboveMultiplier||1.5};}else{rules={weekly:{threshold:40,multiplier:1.5},daily:[]};}
-const {days,total}=summarizeHours(weekDays);let dailyGross=0;for(let i=0;i<7;i++){const h=Number(days[i]||0);if(h<=0)continue;const dGross=applyOvertimeForDay(h,rules,base);dailyGross+=dGross;}const weeklyExcess=Math.max(0,total-(rules.weekly?.threshold??40));const weeklyOT=weeklyExcess*base*((rules.weekly?.multiplier??1.5)-1);let gross=dailyGross+weeklyOT;const net=gross*(1-(wh));return{gross:Math.round(gross*100)/100,net:Math.round(net*100)/100,totalHours:total};}
-export function project(state){const start=mondayOf(new Date());const weeks=Array.from({length:12},(_,i)=>({weekStart:addDays(start,i*7),inflows:0,mustPays:0,variables:0,splurge:state.user.splurgePerWeek||0,freeToSpend:0,}));for(const t of state.timesheets||[]){const ws=mondayOf(t.weekStart);const idx=Math.floor((ws-start)/(7*24*3600*1000));if(idx>=0&&idx<12){const pr=state.payRules||{baseHourly:20,withholdingRatio:0.2,schema:'federal'};const days=t.days||[0,0,0,0,0,0,0];const pay=computeWeekPay(days,pr);weeks[idx].inflows+=pay.net;}}for(const bill of state.bills||[]){for(let i=0;i<12;i++){const w=weeks[i];const weekStart=new Date(w.weekStart);for(let mOff=0;mOff<3;mOff++){const due=new Date(weekStart.getFullYear(),weekStart.getMonth()+mOff,bill.dueDay);if(isInWeek(due,weekStart))w.mustPays+=Number(bill.amount||0);}}}for(const loan of state.loans||[]){for(let i=0;i<12;i++){const w=weeks[i];const weekStart=new Date(w.weekStart);for(let mOff=0;mOff<3;mOff++){const due=new Date(weekStart.getFullYear(),weekStart.getMonth()+mOff,loan.dueDay);if(isInWeek(due,weekStart))w.mustPays+=Number(loan.minimumPayment||0);}}}const varsWeekly=(state.envelopes||[]).reduce((s,e)=>s+Number(e.weeklyTarget||0),0);for(const w of weeks)w.variables+=varsWeekly;for(const ev of state.events||[]){const d=mondayOf(ev.date);const idx=Math.floor((d-start)/(7*24*3600*1000));if(idx>=0&&idx<12){if(ev.type==='income')weeks[idx].inflows+=Number(ev.amount||0);if(ev.type==='discretionary')weeks[idx].mustPays+=Number(ev.amount||0);}}for(const w of weeks){const out=w.mustPays+w.variables+w.splurge;w.freeToSpend=Math.round((w.inflows-out)*100)/100;}return weeks;}
-export function monthlyReality(state){const today=new Date();const monthStart=new Date(today.getFullYear(),today.getMonth(),1);const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,1);const weeks=project(state);let inflows=0,must=0,vars=0,splurge=0;for(const w of weeks){const ws=new Date(w.weekStart);if(ws>=monthStart&&ws<monthEnd){inflows+=w.inflows;must+=w.mustPays;vars+=w.variables;splurge+=w.splurge;}}const monthNeed=must+vars+splurge;let earned=0;const pr=state.payRules||{baseHourly:20,withholdingRatio:0.2,schema:'federal'};for(const t of state.timesheets||[]){const d=new Date(t.weekStart);if(d>=monthStart&&d<monthEnd){const pay=computeWeekPay(t.days||[],pr);earned+=pay.net;}}const shortfall=Math.max(0,Math.round((monthNeed-earned)*100)/100);const effectiveNetRate=(pr.baseHourly||20)*(1-(pr.withholdingRatio??0.2));const hoursNeeded=shortfall>0?Math.ceil(shortfall/effectiveNetRate):0;let weeksLeft=0;for(const w of weeks){const ws=new Date(w.weekStart);if(ws>=today&&ws<monthEnd)weeksLeft++;}weeksLeft=Math.max(1,weeksLeft);const perWeek=shortfall>0?Math.ceil(hoursNeeded/weeksLeft):0;return{monthNeed:Math.round(monthNeed*100)/100,earned:Math.round(earned*100)/100,shortfall,hoursNeeded,weeksLeft,perWeek};}
+export function monthlyReality(state){
+  const monthNeed = monthlyBills(state) + monthlyEnvelopes(state) + monthlyFAF(state);
+  const earned = monthToDateIncome(state);
+  const shortfall = Math.max(0, monthNeed - earned);
+  const base = Number(state.payRules?.baseHourly||20);
+  const perHourNet = base * (1 - Number(state.payRules?.withholdingRatio??0.2));
+  const hoursNeeded = shortfall>0 ? Math.ceil(shortfall / Math.max(1,perHourNet)) : 0;
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const day = now.getDate();
+  const weeksLeft = Math.max(1, Math.ceil((daysInMonth - day)/7));
+  const perWeek = shortfall>0 ? Math.ceil(hoursNeeded/weeksLeft) : 0;
+  return {monthNeed, earned, shortfall, hoursNeeded, perWeek};
+}
+
+function monthlyBills(state){
+  return (state.bills||[]).reduce((s,b)=>s+Number(b.amount||0),0) + (state.loans||[]).reduce((s,l)=>s+Number(l.minimumPayment||0),0);
+}
+function monthlyEnvelopes(state){
+  return (state.envelopes||[]).reduce((s,e)=>s+Number(e.weeklyTarget||0),0)*4;
+}
+function monthlyFAF(state){ return Number(state.user?.faFundsPerWeek||0)*4; }
+
+function weeklyBillsPortion(state){ return (monthlyBills(state))/4; }
+
+function estimateWeeklyIncome(state){
+  const ts = (state.timesheets||[]).slice(-1)[0];
+  if(ts){ return computeWeekPay(ts.days||[], state.payRules).net; }
+  const base = Number(state.payRules?.baseHourly||20);
+  const withholding = Number(state.payRules?.withholdingRatio??0.2);
+  return base*40*(1-withholding);
+}
+
+// --------- paycheck calc with OT rules ---------
+export function computeWeekPay(days, rules){
+  const base = Number(rules?.baseHourly||20);
+  const wh = Number(rules?.withholdingRatio??0.2);
+  const schema = rules?.schema||'federal';
+
+  let gross = 0;
+  const totalHours = days.reduce((a,b)=>a+Number(b||0),0);
+
+  if(schema==='federal'){
+    const ot = Math.max(0, totalHours - 40);
+    const reg = totalHours - ot;
+    gross = reg*base + ot*base*1.5;
+  } else if(schema==='california'){
+    for(const h of days){
+      const d = Number(h||0);
+      const reg = Math.min(8,d);
+      const ot15 = Math.min(Math.max(0,d-8), 4);
+      const ot2 = Math.max(0, d-12);
+      gross += reg*base + ot15*base*1.5 + ot2*base*2;
+    }
+  } else if(schema==='alaska'){
+    let dailyGross=0;
+    for(const h of days){
+      const d = Number(h||0);
+      const reg = Math.min(8,d);
+      const ot15 = Math.max(0,d-8);
+      dailyGross += reg*base + ot15*base*1.5;
+    }
+    const weeklyOT = Math.max(0,totalHours-40);
+    const weeklyGross = (totalHours-weeklyOT)*base + weeklyOT*base*1.5;
+    gross = Math.max(dailyGross, weeklyGross);
+  } else if(schema==='colorado'){
+    let dailyGross=0;
+    for(const h of days){
+      const d = Number(h||0);
+      const reg = Math.min(12,d);
+      const ot15 = Math.max(0,d-12);
+      dailyGross += reg*base + ot15*base*1.5;
+    }
+    const weeklyOT = Math.max(0,totalHours-40);
+    const weeklyGross = (totalHours-weeklyOT)*base + weeklyOT*base*1.5;
+    gross = Math.max(dailyGross, weeklyGross);
+  } else if(schema==='nevada'){
+    const daily = rules?.nvDaily8;
+    if(daily){
+      let dailyGross=0;
+      for(const h of days){
+        const d = Number(h||0);
+        const reg = Math.min(8,d);
+        const ot15 = Math.max(0,d-8);
+        dailyGross += reg*base + ot15*base*1.5;
+      }
+      const weeklyOT = Math.max(0,totalHours-40);
+      const weeklyGross = (totalHours-weeklyOT)*base + weeklyOT*base*1.5;
+      gross = Math.max(dailyGross, weeklyGross);
+    } else {
+      const ot = Math.max(0,totalHours-40);
+      gross = (totalHours-ot)*base + ot*base*1.5;
+    }
+  } else if(schema==='custom'){
+    const weekly = rules?.custom?.weekly || {threshold:40, multiplier:1.5};
+    const daily = rules?.custom?.daily || [{threshold:8,multiplier:1},{threshold:12,multiplier:1.5}];
+    const above = Number(rules?.custom?.dailyAboveMultiplier||2);
+
+    let dailyGross=0;
+    for(const h of days){
+      const d = Number(h||0);
+      let remain = d, lastThresh = 0, acc = 0;
+      for(let i=0;i<daily.length;i++){
+        const th = daily[i].threshold;
+        const mult = (i===0?1:daily[i-1].multiplier);
+        const span = Math.max(0, Math.min(remain, th - lastThresh));
+        acc += span*base*mult;
+        remain -= span; lastThresh = th;
+      }
+      const topMult = daily[daily.length-1]?.multiplier || 1.5;
+      const aboveMult = Math.max(above, topMult);
+      acc += Math.max(0, remain)*base*aboveMult;
+      dailyGross += acc;
+    }
+    const wot = Math.max(0,totalHours - Number(weekly.threshold||40));
+    const weeklyGross = (totalHours - wot)*base + wot*base*Number(weekly.multiplier||1.5);
+    gross = Math.max(dailyGross, weeklyGross);
+  } else {
+    const ot = Math.max(0, totalHours - 40);
+    gross = (totalHours-ot)*base + ot*base*1.5;
+  }
+
+  const net = gross * (1 - wh);
+  return {gross, net, totalHours};
+}
+
+export function iso(d){ return new Date(d).toISOString().slice(0,10); }
+
+function monthToDateIncome(state){
+  const now = new Date();
+  const month = now.getMonth(), year = now.getFullYear();
+  return (state.timesheets||[]).filter(ts=>{
+    const t = new Date(ts.weekStart);
+    return t.getFullYear()===year && t.getMonth()===month;
+  }).reduce((s,ts)=> s + computeWeekPay(ts.days||[], state.payRules).net, 0);
+}
