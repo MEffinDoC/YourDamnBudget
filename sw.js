@@ -1,11 +1,12 @@
 // sw.js — cache-busted & scoped for GitHub Pages
 const SCOPE = '/YourDamnBudget/';
-const CACHE = 'ydb-v7'; // bumped for nav fixes
+const CACHE = 'ydb-v9'; // bump for restored views
 
 const ASSETS = [
   `${SCOPE}`, `${SCOPE}index.html`,
   `${SCOPE}styles.css?v=7`, `${SCOPE}nav.js?v=7`,
-  `${SCOPE}app.js?v=7`, `${SCOPE}engine.js`, `${SCOPE}storage.js`,
+  `${SCOPE}app.js?v=9`,          // note new version for fresh fetch
+  `${SCOPE}engine.js`, `${SCOPE}storage.js`,
   `${SCOPE}manifest.webmanifest`,
   `${SCOPE}icons/flat-192.png`, `${SCOPE}icons/flat-512.png`
 ];
