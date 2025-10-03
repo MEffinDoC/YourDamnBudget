@@ -71,14 +71,33 @@ function render(){
 }
 
 function renderHome(){
+  // helper dates
+  const start = lastPaydayFrom(new Date(), state.user.paydayWeekday);
+  const end   = nextPaydayFrom(new Date(), state.user.paydayWeekday);
+
+  // 12-week weekly model (unchanged usage for the other KPIs)
   const weeks = project(state);
   const thisWeek = weeks[0];
-  const start = lastPaydayFrom(new Date(), state.user.paydayWeekday);
-  const end = nextPaydayFrom(new Date(), state.user.paydayWeekday);
+
+  // Items still due before next payday
   const upcoming = getUpcomingThisPayPeriod();
+  const dueThisPeriod = upcoming.reduce((sum, it) => sum + Number(it.amount||0), 0);
+
+  // Net inflows left this period (simple: use logged timesheets whose weekStart is inside the window)
+  const inflowsLeft = (state.timesheets||[])
+    .filter(ts => {
+      const d = new Date(ts.weekStart);
+      return d >= start && d < end;
+    })
+    .reduce((sum, ts) => sum + computeWeekPay(ts.days || [], state.payRules).net, 0);
+
+  // BANK-AWARE spendable number
+  const bankNow = Number(state.bank?.currentBalance || 0);
+  const cashYouCanTouch = bankNow + inflowsLeft - dueThisPeriod;
+
   const reality = monthlyReality(state);
 
-  const card=document.createElement('div'); card.className='grid';
+  const card = document.createElement('div'); card.className = 'grid';
   card.innerHTML = `
     <section class="card">
       <div class="grid cols-3">
@@ -98,10 +117,13 @@ function renderHome(){
           <div class="help">(edit in Settings)</div>
         </div>
       </div>
+
       <div class="grid cols-3" style="margin-top:8px">
         <div>
           <div class="kpi-label">The Ugly Truth</div>
-          <div class="kpi-value ${thisWeek.freeToSpend<0?'negative':'positive'}">${fmt(thisWeek.inflows - (thisWeek.mustPays + thisWeek.variables + thisWeek.splurge))}</div>
+          <div class="kpi-value ${thisWeek.freeToSpend<0?'negative':'positive'}">
+            ${fmt(thisWeek.inflows - (thisWeek.mustPays + thisWeek.variables + thisWeek.splurge))}
+          </div>
           <div class="help">(where the fuck your money went)</div>
         </div>
         <div class="clickable" id="tap-inflows">
@@ -114,6 +136,14 @@ function renderHome(){
           <div class="kpi-value ${thisWeek.freeToSpend<0?'negative':'positive'}">${fmt(thisWeek.freeToSpend)}</div>
         </div>
       </div>
+
+      <div class="grid cols-3" style="margin-top:8px">
+        <div>
+          <div class="kpi-label">Cash You Can Touch</div>
+          <div class="kpi-value ${cashYouCanTouch<0?'negative':'positive'}">${fmt(cashYouCanTouch)}</div>
+          <div class="help">= bank (${fmt(bankNow)}) + pay left (${fmt(inflowsLeft)}) − due before payday (${fmt(dueThisPeriod)})</div>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -122,18 +152,19 @@ function renderHome(){
       ${upcoming.length===0 ? '<div class="help">Nothing due before next payday 🎉</div>' : ''}
       ${upcoming.length>0 ? `
       <div class="table-scroll">
-      <table>
-        <thead><tr><th>Due</th><th>Item</th><th>Amount</th><th>Paid?</th></tr></thead>
-        <tbody>
-          ${upcoming.map(it=>`
-            <tr>
-              <td>${it.date}</td>
-              <td>${it.kind.toUpperCase()}: ${it.name||''}</td>
-              <td>${fmt(it.amount)}</td>
-              <td><input type="checkbox" data-k="${it.kind}" data-id="${it.id}" data-date="${it.date}"></td>
-            </tr>`).join('')}
-        </tbody>
-      </table></div>` : ''}
+        <table>
+          <thead><tr><th>Due</th><th>Item</th><th>Amount</th><th>Paid?</th></tr></thead>
+          <tbody>
+            ${upcoming.map(it=>`
+              <tr>
+                <td>${it.date}</td>
+                <td>${it.kind.toUpperCase()}: ${it.name||''}</td>
+                <td>${fmt(it.amount)}</td>
+                <td><input type="checkbox" data-k="${it.kind}" data-id="${it.id}" data-date="${it.date}"></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
       <div class="help">Check it off when you pay it — gone for this period.</div>
     </section>
 
@@ -151,7 +182,9 @@ function renderHome(){
         </div>
         <div>
           <div class="kpi-label">${reality.shortfall>0 ? 'Hours to cover it' : 'You’re covered'}</div>
-          <div class="kpi-value ${reality.shortfall>0?'negative':'positive'}">${reality.shortfall>0 ? reality.hoursNeeded+' hrs' : '✔︎'}</div>
+          <div class="kpi-value ${reality.shortfall>0?'negative':'positive'}">
+            ${reality.shortfall>0 ? reality.hoursNeeded+' hrs' : '✔︎'}
+          </div>
           ${reality.shortfall>0 ? `<div class="help">~${reality.perWeek} hrs/week for the rest of the month</div>` : ''}
         </div>
       </div>
@@ -159,18 +192,20 @@ function renderHome(){
   `;
   app.appendChild(card);
 
+  // mark paid actions
   document.querySelectorAll('input[type="checkbox"][data-k]').forEach(cb=>{
     cb.addEventListener('change', ()=>{
       if(cb.checked){ markPaid(cb.dataset.k, cb.dataset.id*1, cb.dataset.date); render(); }
     });
   });
 
+  // safe-tap navigation
   attachSafeTap(document.getElementById('tap-must'),   ()=>navTo('bills'));
   attachSafeTap(document.getElementById('tap-vars'),   ()=>navTo('envelopes'));
   attachSafeTap(document.getElementById('tap-splurge'),()=>navTo('settings'));
   attachSafeTap(document.getElementById('tap-inflows'),()=>navTo('timesheet'));
 
-  // Show wizard if first run
+  // first-time wizard
   if(!state.meta?.onboarded){ showWizard(); }
 }
 
