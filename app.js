@@ -1,9 +1,9 @@
-// Your Damn Budget — App shell with full views restored
+// Your Damn Budget — robust app shell with safe render guards
 
 import { load } from './storage.js';
 import { project, monthlyReality, computeWeekPay, iso } from './engine.js';
 
-// ---------- state & helpers ----------
+/* ---------- state & helpers ---------- */
 let state = load() || {};
 const app = document.getElementById('app');
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -13,26 +13,76 @@ function storageKey(){
   return `ydb:${repo}:v3`;
 }
 function save(){ localStorage.setItem(storageKey(), JSON.stringify(state)); }
-
 const money = n => (n<0?'-':'') + '$' + Math.abs(Number(n||0)).toFixed(2);
 const todayISO = () => iso(new Date());
-function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstElementChild; }
 
-// Payday helpers
+function section(title, bodyHtml=''){
+  const s = document.createElement('section');
+  s.className = 'card';
+  s.innerHTML = (title ? `<h2>${title}</h2>` : '') + bodyHtml;
+  return s;
+}
 function lastPaydayFrom(d, weekday=5){ const x=new Date(d); const diff=(x.getDay()-weekday+7)%7; x.setDate(x.getDate()-diff); x.setHours(0,0,0,0); return x; }
 function nextPaydayFrom(d, weekday=5){ const x=new Date(d); const diff=(weekday-x.getDay()+7)%7; x.setDate(x.getDate()+diff+(diff===0?7:0)); x.setHours(0,0,0,0); return x; }
 
-// ---------- HOME ----------
-function renderHome(){
-  const weeks = project(state);
-  const w0 = weeks[0];
-  const start = lastPaydayFrom(new Date(), state.user.paydayWeekday);
-  const end   = nextPaydayFrom(new Date(), state.user.paydayWeekday);
+/* ---------- safe render wrapper ---------- */
+function safe(fn, title){
+  try { fn(); }
+  catch (e){
+    console.error(`Render error in ${title||'view'}`, e);
+    const s = section(title||'Oops', `
+      <div class="help">We hit a snag rendering <strong>${title||'this page'}</strong>.</div>
+      <div class="help" style="margin-top:6px">Try Settings → Export backup, then reload. If it keeps happening, tell me what you just did and we’ll squash it.</div>
+    `);
+    app.appendChild(s);
+  }
+}
 
-  const bank = Number(state.bank?.currentBalance||0);
-  const incomeThisWeek = w0.income;
+/* ---------- shared: upcoming in current pay period ---------- */
+function getUpcomingThisPayPeriod(){
+  const start = lastPaydayFrom(new Date(), state.user?.paydayWeekday ?? 5);
+  const end   = nextPaydayFrom(new Date(), state.user?.paydayWeekday ?? 5);
+  const items = [];
+  for(const b of state.bills||[]){
+    for(let m=0;m<2;m++){
+      const due=new Date(start.getFullYear(), start.getMonth()+m, b.dueDay);
+      if(due>=start && due<end) items.push({kind:'bill', id:b.id, name:b.name, date: iso(due), amount:+b.amount||0});
+    }
+  }
+  for(const l of state.loans||[]){
+    for(let m=0;m<2;m++){
+      const due=new Date(start.getFullYear(), start.getMonth()+m, l.dueDay);
+      if(due>=start && due<end) items.push({kind:'loan', id:l.id, name:l.name, date: iso(due), amount:+l.minimumPayment||0});
+    }
+  }
+  for(const e of state.events||[]){
+    const d=new Date(e.date);
+    if(d>=start && d<end && e.type==='discretionary'){
+      items.push({kind:'event', id:e.id, name:e.name||'One-time', date: iso(d), amount:+e.amount||0});
+    }
+  }
+  const paid = new Set((state.paid||[]).map(p=>`${p.kind}:${p.id}:${p.dateISO}`));
+  return items.sort((a,b)=> new Date(a.date)-new Date(b.date) || a.name.localeCompare(b.name))
+              .filter(it => !paid.has(`${it.kind}:${it.id}:${it.date}`));
+}
+function markPaid(kind,id,dateISO){ state.paid=state.paid||[]; state.paid.push({kind,id,dateISO}); save(); }
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  const u = state.user || (state.user = { paydayWeekday: 5, faFundsPerWeek: 50 });
+  const bank = state.bank || (state.bank = { currentBalance: 0 });
+  save();
+
+  let weeks = [];
+  try { weeks = project(state) || []; } catch { weeks = []; }
+  const w0 = weeks[0] || { income: 0, mustPays: 0, variables: 0, left: 0, start: todayISO() };
+
+  const start = lastPaydayFrom(new Date(), u.paydayWeekday);
+  const end   = nextPaydayFrom(new Date(), u.paydayWeekday);
   const variables = (state.envelopes||[]).reduce((s,e)=>s+Number(e.weeklyTarget||0),0);
-  const faf = Number(state.user?.faFundsPerWeek||0);
+  const faf = Number(u.faFundsPerWeek||0);
+  const bankBal = Number(bank.currentBalance||0);
+  const incomeThisWeek = Number(w0.income||0);
 
   const paidAmt = (state.paid||[]).filter(p => p.dateISO>=iso(start) && p.dateISO<iso(end))
     .reduce((s,p)=>{
@@ -42,10 +92,10 @@ function renderHome(){
       return s;
     },0);
 
-  const starting = bank + incomeThisWeek;
+  const starting = bankBal + incomeThisWeek;
   const liveBalance = starting - paidAmt - variables - faf;
 
-  const daysLeft = Math.max(1, Math.round((nextPaydayFrom(new Date(), state.user.paydayWeekday) - new Date())/(1000*60*60*24)));
+  const daysLeft = Math.max(1, Math.round((nextPaydayFrom(new Date(), u.paydayWeekday) - new Date())/(1000*60*60*24)));
   const funLines = [
     `${daysLeft} days till your next beer fund 🍺`,
     `${daysLeft} late-night pizza runs till payday 🍕`,
@@ -55,10 +105,7 @@ function renderHome(){
 
   const upcoming = getUpcomingThisPayPeriod();
 
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Weekly Damage Report</h2>
+  const s = section('Weekly Damage Report', `
     <div class="grid cols-3" style="margin-top:6px">
       <div>
         <div class="kpi-label">Cash This Week</div>
@@ -104,7 +151,7 @@ function renderHome(){
     <div id="rc_result" class="help" style="margin-top:6px"></div>
 
     <h3 style="margin-top:12px">Bills Due This Week</h3>
-    <div class="help">Pay period: ${iso(start)} → ${iso(end)} (Payday: ${DOW[state.user.paydayWeekday]}).</div>
+    <div class="help">Pay period: ${iso(start)} → ${iso(end)} (Payday: ${DOW[u.paydayWeekday]}).</div>
     ${upcoming.length===0 ? '<div class="help">Nothing due before next payday 🎉</div>' : `
       <div class="table-scroll" style="margin-top:6px">
         <table>
@@ -121,7 +168,7 @@ function renderHome(){
         </table>
       </div>
     `}
-  `;
+  `);
   app.appendChild(s);
 
   const wrapDate = s.querySelector('#rc_date_wrap');
@@ -153,8 +200,8 @@ function renderHome(){
 }
 
 function affordCheck(amount, source, byDate){
-  const start = lastPaydayFrom(new Date(), state.user.paydayWeekday);
-  const end   = nextPaydayFrom(new Date(), state.user.paydayWeekday);
+  const start = lastPaydayFrom(new Date(), state.user?.paydayWeekday ?? 5);
+  const end   = nextPaydayFrom(new Date(), state.user?.paydayWeekday ?? 5);
   const inWindow = (d)=> d>=start && d<=end;
 
   const due = [];
@@ -175,7 +222,8 @@ function affordCheck(amount, source, byDate){
   const dueBefore = due.reduce((s,n)=>s+n,0);
 
   const bank = Number(state.bank?.currentBalance||0);
-  const incomeThisWeek = project(state)[0].income;
+  let weeks=[]; try{ weeks = project(state)||[]; }catch{ weeks=[]; }
+  const incomeThisWeek = Number((weeks[0]?.income)||0);
   const variables = (state.envelopes||[]).reduce((s,e)=>s+Number(e.weeklyTarget||0),0);
   const faf = Number(state.user?.faFundsPerWeek||0);
 
@@ -211,13 +259,10 @@ function suggestHoursNeeded(afterPeriod){
   return Math.max(1, Math.ceil(Math.abs(afterPeriod) / Math.max(1,netPerHour)));
 }
 
-// ---------- PLANNER (12-week projection) ----------
+/* ---------- PLANNER ---------- */
 function renderPlanner(){
-  const weeks = project(state);
-  const wrap = document.createElement('section');
-  wrap.className='card';
-  wrap.innerHTML = `
-    <h2>Crystal Ball — 12-week</h2>
+  let weeks=[]; try{ weeks = project(state)||[]; }catch{ weeks=[]; }
+  const wrap = section('Crystal Ball — 12-week', `
     <div class="table-scroll" style="margin-top:6px">
       <table>
         <thead><tr><th>Week Of</th><th>Income</th><th>Must Pay</th><th>Variables</th><th>FAF</th><th>Left</th></tr></thead>
@@ -234,21 +279,20 @@ function renderPlanner(){
           `).join('')}
         </tbody>
       </table>
-    </div>`;
+    </div>`);
   app.appendChild(wrap);
 }
 
-// ---------- TIMESHEET / PAY ----------
+/* ---------- TIMESHEET / PAY ---------- */
 function renderTimesheet(){
-  const u = state.payRules || (state.payRules = { baseHourly: 20, withholdingRatio: 0.2, paydayWeekday: state.user?.paydayWeekday ?? 5 });
+  const u = state.payRules || (state.payRules = { baseHourly: 20, withholdingRatio: 0.2 });
   const hours = state.hours || (state.hours = { regular: 40, ot15: 0, ot2: 0 });
+  (state.user = state.user || {}).paydayWeekday = state.user.paydayWeekday ?? 5;
   save();
 
-  const pay = computeWeekPay(u, hours);
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Hours — Paycheck</h2>
+  let pay={gross:0,net:0}; try{ pay = computeWeekPay(u, hours) || pay; }catch{}
+
+  const s = section('Hours — Paycheck', `
     <div class="grid cols-3">
       <div>
         <label>Base hourly</label>
@@ -282,7 +326,7 @@ function renderTimesheet(){
     <div class="actions" style="margin-top:10px">
       <button class="primary" id="savePay">Save</button>
     </div>
-  `;
+  `);
   app.appendChild(s);
 
   s.querySelector('#savePay').onclick = ()=>{
@@ -296,13 +340,10 @@ function renderTimesheet(){
   };
 }
 
-// ---------- BILLS ----------
+/* ---------- BILLS ---------- */
 function renderBills(){
   state.bills = state.bills || []; save();
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Shit That Must Get Paid — Bills</h2>
+  const s = section('Shit That Must Get Paid — Bills', `
     <div class="grid cols-3">
       <div><label>Name</label><input id="b_name" placeholder="Rent, Electric"></div>
       <div><label>Amount</label><input id="b_amt" type="number" step="0.01"></div>
@@ -316,7 +357,7 @@ function renderBills(){
         ${state.bills.map(b=>`<tr data-id="${b.id}"><td>${b.name}</td><td>${money(b.amount)}</td><td>${b.dueDay}</td><td><button data-del="${b.id}">Delete</button></td></tr>`).join('')}
       </tbody></table>
     </div>
-  `;
+  `);
   app.appendChild(s);
 
   s.querySelector('#b_add').onclick = ()=>{
@@ -332,13 +373,10 @@ function renderBills(){
   });
 }
 
-// ---------- EVENTS (one-time / overdue) ----------
+/* ---------- EVENTS ---------- */
 function renderEvents(){
   state.events = state.events || []; save();
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Catch-Up Shit — One-time & Overdue</h2>
+  const s = section('Catch-Up Shit — One-time & Overdue', `
     <div class="grid cols-3">
       <div><label>Name</label><input id="e_name" placeholder="Last month electric"></div>
       <div><label>Amount</label><input id="e_amt" type="number" step="0.01"></div>
@@ -352,7 +390,7 @@ function renderEvents(){
         ${state.events.map(e=>`<tr data-id="${e.id}"><td>${e.date}</td><td>${e.name||''}</td><td>${money(e.amount)}</td><td><button data-del="${e.id}">Delete</button></td></tr>`).join('')}
       </tbody></table>
     </div>
-  `;
+  `);
   app.appendChild(s);
 
   s.querySelector('#e_add').onclick = ()=>{
@@ -367,13 +405,10 @@ function renderEvents(){
   });
 }
 
-// ---------- ENVELOPES (weekly buckets) ----------
+/* ---------- ENVELOPES ---------- */
 function renderEnvelopes(){
   state.envelopes = state.envelopes || []; save();
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Where It Goes — Weekly Buckets</h2>
+  const s = section('Where It Goes — Weekly Buckets', `
     <div class="grid cols-3">
       <div><label>Name</label><input id="v_name" placeholder="Food, Gas, Fun"></div>
       <div><label>Weekly $</label><input id="v_amt" type="number" step="0.01"></div>
@@ -386,7 +421,7 @@ function renderEnvelopes(){
         ${state.envelopes.map(e=>`<tr data-id="${e.id}"><td>${e.name}</td><td>${money(e.weeklyTarget)}</td><td><button data-del="${e.id}">Delete</button></td></tr>`).join('')}
       </tbody></table>
     </div>
-  `;
+  `);
   app.appendChild(s);
 
   s.querySelector('#v_add').onclick = ()=>{
@@ -401,13 +436,10 @@ function renderEnvelopes(){
   });
 }
 
-// ---------- LOANS ----------
+/* ---------- LOANS ---------- */
 function renderLoans(){
   state.loans = state.loans || []; save();
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Your Damn Debts — Loans & IOUs</h2>
+  const s = section('Your Damn Debts — Loans & IOUs', `
     <div class="grid cols-3">
       <div><label>Name</label><input id="l_name" placeholder="Car, CC, Student"></div>
       <div><label>Minimum $</label><input id="l_min" type="number" step="0.01"></div>
@@ -422,7 +454,7 @@ function renderLoans(){
         ${state.loans.map(l=>`<tr data-id="${l.id}"><td>${l.name}</td><td>${money(l.minimumPayment)}</td><td>${l.dueDay}</td><td>${l.balance?money(l.balance):'-'}</td><td><button data-del="${l.id}">Delete</button></td></tr>`).join('')}
       </tbody></table>
     </div>
-  `;
+  `);
   app.appendChild(s);
 
   s.querySelector('#l_add').onclick = ()=>{
@@ -439,16 +471,13 @@ function renderLoans(){
   });
 }
 
-// ---------- SETTINGS ----------
+/* ---------- SETTINGS ---------- */
 function renderSettings(){
   const u = state.user || (state.user = { paydayWeekday: 5, faFundsPerWeek: 50 });
   const bank = state.bank || (state.bank = { currentBalance: 0 });
   save();
 
-  const s = document.createElement('section');
-  s.className='card';
-  s.innerHTML = `
-    <h2>Settings</h2>
+  const s = section('Settings', `
     <div class="grid cols-3">
       <div><label>Bank Balance</label><input id="s_bank" type="number" step="0.01" value="${bank.currentBalance}"></div>
       <div><label>Payday weekday</label>
@@ -464,7 +493,7 @@ function renderSettings(){
         Import backup<input id="s_import" type="file" accept="application/json" style="display:none">
       </label>
     </div>
-  `;
+  `);
   app.appendChild(s);
 
   s.querySelector('#s_save').onclick = ()=>{
@@ -490,47 +519,18 @@ function renderSettings(){
   };
 }
 
-// ---------- helpers ----------
-function getUpcomingThisPayPeriod(){
-  const start = lastPaydayFrom(new Date(), state.user.paydayWeekday);
-  const end   = nextPaydayFrom(new Date(), state.user.paydayWeekday);
-  const items = [];
-  for(const b of state.bills||[]){
-    for(let m=0;m<2;m++){
-      const due=new Date(start.getFullYear(), start.getMonth()+m, b.dueDay);
-      if(due>=start && due<end) items.push({kind:'bill', id:b.id, name:b.name, date: iso(due), amount:+b.amount||0});
-    }
-  }
-  for(const l of state.loans||[]){
-    for(let m=0;m<2;m++){
-      const due=new Date(start.getFullYear(), start.getMonth()+m, l.dueDay);
-      if(due>=start && due<end) items.push({kind:'loan', id:l.id, name:l.name, date: iso(due), amount:+l.minimumPayment||0});
-    }
-  }
-  for(const e of state.events||[]){
-    const d=new Date(e.date);
-    if(d>=start && d<end && e.type==='discretionary'){
-      items.push({kind:'event', id:e.id, name:e.name||'One-time', date: iso(d), amount:+e.amount||0});
-    }
-  }
-  const paid = new Set((state.paid||[]).map(p=>`${p.kind}:${p.id}:${p.dateISO}`));
-  return items.sort((a,b)=> new Date(a.date)-new Date(b.date) || a.name.localeCompare(b.name))
-              .filter(it => !paid.has(`${it.kind}:${it.id}:${it.date}`));
-}
-function markPaid(kind,id,dateISO){ state.paid=state.paid||[]; state.paid.push({kind,id,dateISO}); save(); }
-
-// ---------- router ----------
+/* ---------- router ---------- */
 function render(){
   app.innerHTML='';
   const view = document.querySelector('nav .tab.active')?.dataset.view || 'home';
-  if(view==='home') renderHome();
-  if(view==='planner') renderPlanner();
-  if(view==='timesheet') renderTimesheet();
-  if(view==='bills') renderBills();
-  if(view==='events') renderEvents();
-  if(view==='envelopes') renderEnvelopes();
-  if(view==='loans') renderLoans();
-  if(view==='settings') renderSettings();
+  if(view==='home')        safe(renderHome, 'Home');
+  if(view==='planner')     safe(renderPlanner, 'Crystal Ball');
+  if(view==='timesheet')   safe(renderTimesheet, 'Hours');
+  if(view==='bills')       safe(renderBills, 'Bills');
+  if(view==='events')      safe(renderEvents, 'Catch-Up Shit');
+  if(view==='envelopes')   safe(renderEnvelopes, 'Weekly Buckets');
+  if(view==='loans')       safe(renderLoans, 'Your Damn Debts');
+  if(view==='settings')    safe(renderSettings, 'Settings');
 }
 document.querySelectorAll('nav .tab').forEach(btn=>{
   btn.onclick=()=>{ document.querySelectorAll('nav .tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); };
