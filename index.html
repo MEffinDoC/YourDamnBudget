@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
 
   <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest" type="application/manifest+json">
-  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=11">
+  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=12">
 </head>
 <body>
   <header class="topbar">
@@ -39,12 +39,14 @@
   </header>
 
   <main id="app" class="container"></main>
+
+  <!-- First-run wizard -->
   <div id="wizard" class="overlay hidden"></div>
 
   <!-- BOTTOM BANNER AD -->
   <footer class="footer">
     <div id="ad-bottom" class="ad-slot" aria-label="ad-bottom"></div>
-    <div class="version">YDB v11</div>
+    <div class="version">YDB v12</div>
   </footer>
 
   <script>
@@ -57,6 +59,7 @@
   </script>
   <script src="/YourDamnBudget/nav.js?v=7" defer></script>
   <script src="/YourDamnBudget/ads.js?v=11" defer></script>
-  <script type="module" src="/YourDamnBudget/app.js?v=11"></script>
+  <script src="/YourDamnBudget/install.js?v=12" defer></script>
+  <script type="module" src="/YourDamnBudget/app.js?v=12"></script>
 </body>
 </html>
