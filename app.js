@@ -1,9 +1,8 @@
-// Your Damn Budget — robust app shell with safe render guards
+// Your Damn Budget v11 — ads+donate+i18n+withholding update
 
 import { load } from './storage.js';
 import { project, monthlyReality, computeWeekPay, iso } from './engine.js';
 
-/* ---------- state & helpers ---------- */
 let state = load() || {};
 const app = document.getElementById('app');
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -15,30 +14,32 @@ function storageKey(){
 function save(){ localStorage.setItem(storageKey(), JSON.stringify(state)); }
 const money = n => (n<0?'-':'') + '$' + Math.abs(Number(n||0)).toFixed(2);
 const todayISO = () => iso(new Date());
+function section(title, bodyHtml=''){ const s=document.createElement('section'); s.className='card'; s.innerHTML=(title?`<h2>${title}</h2>`:'')+bodyHtml; return s; }
+function lastPaydayFrom(d,weekday=5){ const x=new Date(d); const diff=(x.getDay()-weekday+7)%7; x.setDate(x.getDate()-diff); x.setHours(0,0,0,0); return x; }
+function nextPaydayFrom(d,weekday=5){ const x=new Date(d); const diff=(weekday-x.getDay()+7)%7; x.setDate(x.getDate()+diff+(diff===0?7:0)); x.setHours(0,0,0,0); return x; }
 
-function section(title, bodyHtml=''){
-  const s = document.createElement('section');
-  s.className = 'card';
-  s.innerHTML = (title ? `<h2>${title}</h2>` : '') + bodyHtml;
-  return s;
-}
-function lastPaydayFrom(d, weekday=5){ const x=new Date(d); const diff=(x.getDay()-weekday+7)%7; x.setDate(x.getDate()-diff); x.setHours(0,0,0,0); return x; }
-function nextPaydayFrom(d, weekday=5){ const x=new Date(d); const diff=(weekday-x.getDay()+7)%7; x.setDate(x.getDate()+diff+(diff===0?7:0)); x.setHours(0,0,0,0); return x; }
-
-/* ---------- safe render wrapper ---------- */
-function safe(fn, title){
-  try { fn(); }
-  catch (e){
-    console.error(`Render error in ${title||'view'}`, e);
-    const s = section(title||'Oops', `
-      <div class="help">We hit a snag rendering <strong>${title||'this page'}</strong>.</div>
-      <div class="help" style="margin-top:6px">Try Settings → Export backup, then reload. If it keeps happening, tell me what you just did and we’ll squash it.</div>
-    `);
-    app.appendChild(s);
+/* ---------------- i18n ---------------- */
+let i18n = { lang:'en', tone:'spicy', dict:null };
+async function loadI18n(lang){
+  try{
+    const res = await fetch(`/YourDamnBudget/i18n/${lang}.json?v=11`);
+    const json = await res.json();
+    i18n.dict = json;
+    i18n.lang = lang;
+    i18n.tone = state.ui?.tone || json.toneDefault || 'spicy';
+  }catch{
+    i18n.dict = null; i18n.lang='en'; i18n.tone='spicy';
   }
 }
+function t(key, fallback=''){
+  const d = i18n.dict;
+  if(!d) return fallback || key;
+  const tone = (state.ui?.tone)||i18n.tone||'spicy';
+  const pack = d[tone] || d['spicy'] || {};
+  return (pack[key] ?? fallback ?? key);
+}
 
-/* ---------- shared: upcoming in current pay period ---------- */
+/* ----------- shared helpers ----------- */
 function getUpcomingThisPayPeriod(){
   const start = lastPaydayFrom(new Date(), state.user?.paydayWeekday ?? 5);
   const end   = nextPaydayFrom(new Date(), state.user?.paydayWeekday ?? 5);
@@ -67,15 +68,13 @@ function getUpcomingThisPayPeriod(){
 }
 function markPaid(kind,id,dateISO){ state.paid=state.paid||[]; state.paid.push({kind,id,dateISO}); save(); }
 
-/* ---------- HOME ---------- */
+/* -------------- VIEWS -------------- */
 function renderHome(){
   const u = state.user || (state.user = { paydayWeekday: 5, faFundsPerWeek: 50 });
-  const bank = state.bank || (state.bank = { currentBalance: 0 });
-  save();
+  const bank = state.bank || (state.bank = { currentBalance: 0 }); save();
 
-  let weeks = [];
-  try { weeks = project(state) || []; } catch { weeks = []; }
-  const w0 = weeks[0] || { income: 0, mustPays: 0, variables: 0, left: 0, start: todayISO() };
+  let weeks=[]; try{ weeks = project(state)||[]; }catch{ weeks=[]; }
+  const w0 = weeks[0] || { income:0, start: todayISO() };
 
   const start = lastPaydayFrom(new Date(), u.paydayWeekday);
   const end   = nextPaydayFrom(new Date(), u.paydayWeekday);
@@ -103,9 +102,7 @@ function renderHome(){
   ];
   const party = funLines[Math.floor(Math.random()*funLines.length)];
 
-  const upcoming = getUpcomingThisPayPeriod();
-
-  const s = section('Weekly Damage Report', `
+  const s = section(t('home.weeklyReport','Weekly Summary'), `
     <div class="grid cols-3" style="margin-top:6px">
       <div>
         <div class="kpi-label">Cash This Week</div>
@@ -113,17 +110,17 @@ function renderHome(){
         <div class="help">${party}</div>
       </div>
       <div>
-        <div class="kpi-label">Fuck Around Funds</div>
+        <div class="kpi-label">${t('home.faf','Fun Money')}</div>
         <div class="kpi-value">${money(faf)}</div>
         <div class="help">Edit in Settings</div>
       </div>
       <div>
-        <div class="kpi-label">After Damage</div>
+        <div class="kpi-label">${t('home.afterDamage','Left After Bills')}</div>
         <div class="kpi-value ${liveBalance<0?'negative':'positive'}">${money(liveBalance)}</div>
       </div>
     </div>
 
-    <h3 style="margin-top:10px">Reality Check — Can I afford this?</h3>
+    <h3 style="margin-top:10px">${t('home.canIAfford','Can I afford this?')}</h3>
     <div class="grid cols-3" style="margin-top:6px">
       <div><label>Amount</label><input id="rc_amt" type="number" step="0.01" placeholder="0.00"></div>
       <div><label>When</label>
@@ -136,7 +133,7 @@ function renderHome(){
       <div id="rc_date_wrap" style="display:none"><label>Date</label><input id="rc_date" type="date" value="${todayISO()}"></div>
       <div><label>Pay from</label>
         <select id="rc_source">
-          <option value="faf">Fuck Around Funds</option>
+          <option value="faf">${t('home.faf','Fun Money')}</option>
           <option value="buckets">Weekly Buckets</option>
           <option value="bank">Bank</option>
         </select>
@@ -150,35 +147,15 @@ function renderHome(){
     </div>
     <div id="rc_result" class="help" style="margin-top:6px"></div>
 
-    <h3 style="margin-top:12px">Bills Due This Week</h3>
-    <div class="help">Pay period: ${iso(start)} → ${iso(end)} (Payday: ${DOW[u.paydayWeekday]}).</div>
-    ${upcoming.length===0 ? '<div class="help">Nothing due before next payday 🎉</div>' : `
-      <div class="table-scroll" style="margin-top:6px">
-        <table>
-          <thead><tr><th>Due</th><th>Item</th><th>Amount</th><th>Paid?</th></tr></thead>
-          <tbody>
-            ${upcoming.map(it=>`
-              <tr data-row="${it.kind}:${it.id}:${it.date}">
-                <td>${it.date}</td>
-                <td>${it.kind.toUpperCase()}: ${it.name||''}</td>
-                <td>${money(it.amount)}</td>
-                <td><button class="primary" data-pay="${it.kind}:${it.id}:${it.date}">Pay</button></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    `}
+    <h3 style="margin-top:12px">${t('home.billsDue','Coming Due This Week')}</h3>
   `);
   app.appendChild(s);
 
+  // Affordability wiring
   const wrapDate = s.querySelector('#rc_date_wrap');
   const whenSel = s.querySelector('#rc_when');
   whenSel.onchange = () => { wrapDate.style.display = whenSel.value==='pick' ? '' : 'none'; };
-
-  s.querySelectorAll('.rc_quick').forEach(b=>{
-    b.onclick = ()=>{ s.querySelector('#rc_amt').value = b.dataset.v; };
-  });
-
+  s.querySelectorAll('.rc_quick').forEach(b=>{ b.onclick = ()=>{ s.querySelector('#rc_amt').value = b.dataset.v; }; });
   s.querySelector('#rc_go').onclick = ()=>{
     const amt = Number(s.querySelector('#rc_amt').value||0);
     const source = s.querySelector('#rc_source').value;
@@ -189,6 +166,24 @@ function renderHome(){
     s.querySelector('#rc_result').innerHTML = verdict.html;
   };
 
+  // Upcoming table
+  const upcoming = getUpcomingThisPayPeriod();
+  const tbl = document.createElement('div');
+  tbl.className = 'table-scroll'; tbl.style.marginTop='6px';
+  tbl.innerHTML = upcoming.length===0 ? '<div class="help">Nothing due before next payday 🎉</div>' : `
+    <table>
+      <thead><tr><th>Due</th><th>Item</th><th>Amount</th><th>Paid?</th></tr></thead>
+      <tbody>
+        ${upcoming.map(it=>`
+          <tr data-row="${it.kind}:${it.id}:${it.date}">
+            <td>${it.date}</td>
+            <td>${it.kind.toUpperCase()}: ${it.name||''}</td>
+            <td>${money(it.amount)}</td>
+            <td><button class="primary" data-pay="${it.kind}:${it.id}:${it.date}">Pay</button></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+  s.appendChild(tbl);
   s.querySelectorAll('[data-pay]').forEach(btn=>{
     btn.onclick = ()=>{
       const [k,id,date] = btn.dataset.pay.split(':');
@@ -232,7 +227,7 @@ function affordCheck(amount, source, byDate){
   let lensLeft = 0;
   let lensName = '';
 
-  if(source==='faf'){ lensLeft = faf; lensName = 'Fuck Around Funds'; }
+  if(source==='faf'){ lensLeft = faf; lensName = t('home.faf','Fun Money'); }
   else if(source==='buckets'){ lensLeft = Math.max(0, variables); lensName = 'Weekly Buckets'; }
   else { lensLeft = starting - dueBefore - safety; lensName = 'Bank'; }
 
@@ -259,7 +254,7 @@ function suggestHoursNeeded(afterPeriod){
   return Math.max(1, Math.ceil(Math.abs(afterPeriod) / Math.max(1,netPerHour)));
 }
 
-/* ---------- PLANNER ---------- */
+/* -------- Other views (existing functionality retained) -------- */
 function renderPlanner(){
   let weeks=[]; try{ weeks = project(state)||[]; }catch{ weeks=[]; }
   const wrap = section('Crystal Ball — 12-week', `
@@ -283,7 +278,6 @@ function renderPlanner(){
   app.appendChild(wrap);
 }
 
-/* ---------- TIMESHEET / PAY ---------- */
 function renderTimesheet(){
   const u = state.payRules || (state.payRules = { baseHourly: 20, withholdingRatio: 0.2 });
   const hours = state.hours || (state.hours = { regular: 40, ot15: 0, ot2: 0 });
@@ -294,40 +288,47 @@ function renderTimesheet(){
 
   const s = section('Hours — Paycheck', `
     <div class="grid cols-3">
-      <div>
-        <label>Base hourly</label>
-        <input id="p_base" type="number" step="0.01" value="${u.baseHourly}">
-      </div>
-      <div>
-        <label>Withholding (0–1)</label>
-        <input id="p_tax" type="number" step="0.01" value="${u.withholdingRatio}">
-      </div>
-      <div>
-        <label>Payday (weekday)</label>
+      <div><label>${t('timesheet.base')}</label><input id="p_base" type="number" step="0.01" value="${u.baseHourly}"></div>
+      <div><label>${t('timesheet.withholding')}</label><input id="p_tax" type="number" step="0.01" value="${u.withholdingRatio}"></div>
+      <div><label>Payday (weekday)</label>
         <select id="p_weekday">
           ${DOW.map((d,i)=>`<option value="${i}" ${i===(state.user?.paydayWeekday??5)?'selected':''}>${d}</option>`).join('')}
         </select>
       </div>
     </div>
 
+    <h3 style="margin-top:10px">${t('timesheet.estimateFromCheck')}</h3>
+    <div class="grid cols-3">
+      <div><label>${t('timesheet.exampleGross')}</label><input id="ex_gross" type="number" step="0.01" placeholder="e.g. 1200.00"></div>
+      <div><label>${t('timesheet.exampleNet')}</label><input id="ex_net" type="number" step="0.01" placeholder="e.g. 930.00"></div>
+      <div class="row"><button class="primary" id="applyRatio">${t('timesheet.apply')}</button></div>
+    </div>
+
     <h3 style="margin-top:10px">Hours this week</h3>
     <div class="grid cols-3">
-      <div><label>Regular</label><input id="h_r" type="number" step="0.25" value="${hours.regular}"></div>
-      <div><label>OT ×1.5</label><input id="h_15" type="number" step="0.25" value="${hours.ot15}"></div>
-      <div><label>OT ×2.0</label><input id="h_2" type="number" step="0.25" value="${hours.ot2}"></div>
+      <div><label>${t('timesheet.regular')}</label><input id="h_r" type="number" step="0.25" value="${hours.regular}"></div>
+      <div><label>${t('timesheet.ot15')}</label><input id="h_15" type="number" step="0.25" value="${hours.ot15}"></div>
+      <div><label>${t('timesheet.ot2')}</label><input id="h_2" type="number" step="0.25" value="${hours.ot2}"></div>
     </div>
 
     <div class="grid cols-3" style="margin-top:8px">
-      <div><div class="kpi-label">Gross</div><div class="kpi-value">${money(pay.gross)}</div></div>
-      <div><div class="kpi-label">Net</div><div class="kpi-value">${money(pay.net)}</div></div>
-      <div><div class="kpi-label">This week income</div><div class="kpi-value">${money(pay.net)}</div></div>
+      <div><div class="kpi-label">${t('timesheet.gross')}</div><div class="kpi-value">${money(pay.gross)}</div></div>
+      <div><div class="kpi-label">${t('timesheet.net')}</div><div class="kpi-value">${money(pay.net)}</div></div>
+      <div><div class="kpi-label">${t('timesheet.weekIncome')}</div><div class="kpi-value">${money(pay.net)}</div></div>
     </div>
 
-    <div class="actions" style="margin-top:10px">
-      <button class="primary" id="savePay">Save</button>
-    </div>
+    <div class="actions" style="margin-top:10px"><button class="primary" id="savePay">Save</button></div>
   `);
   app.appendChild(s);
+
+  s.querySelector('#applyRatio').onclick = ()=>{
+    const g = Number(s.querySelector('#ex_gross').value||0);
+    const n = Number(s.querySelector('#ex_net').value||0);
+    if(g<=0 || n<=0 || n>g){ alert('Use a real paycheck: net must be less than gross.'); return; }
+    const ratio = Math.max(0, Math.min(0.6, 1 - (n/g)));
+    state.payRules.withholdingRatio = Number(ratio.toFixed(3));
+    save(); render();
+  };
 
   s.querySelector('#savePay').onclick = ()=>{
     state.payRules.baseHourly = Number(s.querySelector('#p_base').value||0);
@@ -340,7 +341,6 @@ function renderTimesheet(){
   };
 }
 
-/* ---------- BILLS ---------- */
 function renderBills(){
   state.bills = state.bills || []; save();
   const s = section('Shit That Must Get Paid — Bills', `
@@ -373,7 +373,6 @@ function renderBills(){
   });
 }
 
-/* ---------- EVENTS ---------- */
 function renderEvents(){
   state.events = state.events || []; save();
   const s = section('Catch-Up Shit — One-time & Overdue', `
@@ -405,7 +404,6 @@ function renderEvents(){
   });
 }
 
-/* ---------- ENVELOPES ---------- */
 function renderEnvelopes(){
   state.envelopes = state.envelopes || []; save();
   const s = section('Where It Goes — Weekly Buckets', `
@@ -436,7 +434,6 @@ function renderEnvelopes(){
   });
 }
 
-/* ---------- LOANS ---------- */
 function renderLoans(){
   state.loans = state.loans || []; save();
   const s = section('Your Damn Debts — Loans & IOUs', `
@@ -471,36 +468,73 @@ function renderLoans(){
   });
 }
 
+/* ---------- DONATE (new) ---------- */
+function renderDonate(){
+  const s = section(t('donate.title'), `
+    <div class="help">${t('donate.blurb')}</div>
+    <div class="grid cols-3" style="margin-top:8px">
+      <a class="button primary" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener">${t('donate.paypal')}</a>
+      <a class="button primary" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener">${t('donate.cashapp')}</a>
+      <div class="row" style="gap:6px">
+        <a class="button ghost" href="https://paypal.me/mdsdoc/1" target="_blank" rel="noopener">$1</a>
+        <a class="button ghost" href="https://paypal.me/mdsdoc/3" target="_blank" rel="noopener">$3</a>
+        <a class="button ghost" href="https://paypal.me/mdsdoc/5" target="_blank" rel="noopener">$5</a>
+        <a class="button ghost" href="https://paypal.me/mdsdoc/10" target="_blank" rel="noopener">$10</a>
+      </div>
+    </div>
+    <div class="help" style="margin-top:8px">${t('copy.optionalTip')}</div>
+  `);
+  app.appendChild(s);
+}
+
 /* ---------- SETTINGS ---------- */
 function renderSettings(){
   const u = state.user || (state.user = { paydayWeekday: 5, faFundsPerWeek: 50 });
   const bank = state.bank || (state.bank = { currentBalance: 0 });
-  save();
+  state.ui = state.ui || { lang: (i18n.lang||'en'), tone: (i18n.tone||'spicy') }; save();
 
-  const s = section('Settings', `
+  const s = section(t('settings.title','Settings'), `
     <div class="grid cols-3">
-      <div><label>Bank Balance</label><input id="s_bank" type="number" step="0.01" value="${bank.currentBalance}"></div>
-      <div><label>Payday weekday</label>
+      <div><label>${t('settings.language')}</label>
+        <select id="s_lang">
+          <option value="en" ${i18n.lang==='en'?'selected':''}>English</option>
+          <option value="es" ${i18n.lang==='es'?'selected':''}>Español</option>
+        </select>
+      </div>
+      <div><label>${t('settings.tone')}</label>
+        <select id="s_tone">
+          <option value="spicy" ${ (state.ui.tone||'spicy')==='spicy'?'selected':'' }>${t('settings.tone.spicy','Spicy')}</option>
+          <option value="clean" ${ (state.ui.tone||'spicy')==='clean'?'selected':'' }>${t('settings.tone.clean','Clean')}</option>
+        </select>
+      </div>
+      <div><label>${t('settings.bank')}</label><input id="s_bank" type="number" step="0.01" value="${bank.currentBalance}"></div>
+      <div><label>${t('settings.payday')}</label>
         <select id="s_weekday">${DOW.map((d,i)=>`<option value="${i}" ${i===u.paydayWeekday?'selected':''}>${d}</option>`).join('')}</select>
       </div>
-      <div><label>Fuck Around Funds (per week)</label><input id="s_faf" type="number" step="0.01" value="${u.faFundsPerWeek}"></div>
+      <div><label>${t('settings.fafWeekly')}</label><input id="s_faf" type="number" step="0.01" value="${u.faFundsPerWeek}"></div>
     </div>
 
     <div class="actions" style="margin-top:10px">
-      <button class="primary" id="s_save">Save</button>
-      <button class="ghost" id="s_export">Export backup</button>
+      <button class="primary" id="s_save">${t('settings.save')}</button>
+      <button class="ghost" id="s_export">${t('settings.export')}</button>
       <label class="ghost" style="padding:8px 10px;display:inline-block;cursor:pointer">
-        Import backup<input id="s_import" type="file" accept="application/json" style="display:none">
+        ${t('settings.import')}<input id="s_import" type="file" accept="application/json" style="display:none">
       </label>
     </div>
   `);
   app.appendChild(s);
 
-  s.querySelector('#s_save').onclick = ()=>{
+  s.querySelector('#s_save').onclick = async ()=>{
     state.bank.currentBalance = Number(s.querySelector('#s_bank').value||0);
     state.user.paydayWeekday = Number(s.querySelector('#s_weekday').value||5);
     state.user.faFundsPerWeek = Number(s.querySelector('#s_faf').value||0);
-    save(); render();
+
+    const newLang = s.querySelector('#s_lang').value;
+    const newTone = s.querySelector('#s_tone').value;
+    state.ui.lang = newLang; state.ui.tone = newTone;
+    save();
+    await loadI18n(newLang);
+    render();
   };
 
   s.querySelector('#s_export').onclick = ()=>{
@@ -514,25 +548,33 @@ function renderSettings(){
   s.querySelector('#s_import').onchange = (e)=>{
     const f = e.target.files?.[0]; if(!f) return;
     const r = new FileReader();
-    r.onload = ()=>{ try{ state = JSON.parse(String(r.result)); save(); render(); }catch(err){ alert('Bad file'); } };
+    r.onload = async ()=>{ try{ state = JSON.parse(String(r.result)); save(); await loadI18n(state.ui?.lang||'en'); render(); }catch(err){ alert('Bad file'); } };
     r.readAsText(f);
   };
 }
 
-/* ---------- router ---------- */
+/* -------------- Router -------------- */
+function safe(fn){ try{ fn(); }catch(e){ console.error(e); app.appendChild(section('Oops', '<div class="help">We hit a snag.</div>')); } }
 function render(){
   app.innerHTML='';
   const view = document.querySelector('nav .tab.active')?.dataset.view || 'home';
-  if(view==='home')        safe(renderHome, 'Home');
-  if(view==='planner')     safe(renderPlanner, 'Crystal Ball');
-  if(view==='timesheet')   safe(renderTimesheet, 'Hours');
-  if(view==='bills')       safe(renderBills, 'Bills');
-  if(view==='events')      safe(renderEvents, 'Catch-Up Shit');
-  if(view==='envelopes')   safe(renderEnvelopes, 'Weekly Buckets');
-  if(view==='loans')       safe(renderLoans, 'Your Damn Debts');
-  if(view==='settings')    safe(renderSettings, 'Settings');
+  if(view==='home')        safe(renderHome);
+  if(view==='planner')     safe(renderPlanner);
+  if(view==='timesheet')   safe(renderTimesheet);
+  if(view==='bills')       safe(renderBills);
+  if(view==='events')      safe(renderEvents);
+  if(view==='envelopes')   safe(renderEnvelopes);
+  if(view==='loans')       safe(renderLoans);
+  if(view==='donate')      safe(renderDonate);
+  if(view==='settings')    safe(renderSettings);
 }
 document.querySelectorAll('nav .tab').forEach(btn=>{
   btn.onclick=()=>{ document.querySelectorAll('nav .tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); };
 });
-render();
+
+/* Boot: load language then render */
+(async function boot(){
+  const lang = state.ui?.lang || 'en';
+  await loadI18n(lang);
+  render();
+})();
