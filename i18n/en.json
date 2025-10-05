@@ -1,0 +1,67 @@
+{
+  "toneDefault": "spicy",
+  "spicy": {
+    "tabs.home": "Home",
+    "tabs.planner": "Crystal Ball",
+    "tabs.timesheet": "Hours",
+    "tabs.bills": "Shit That Must Get Paid",
+    "tabs.events": "Catch-Up Shit",
+    "tabs.envelopes": "Where It Goes",
+    "tabs.loans": "Your Damn Debts",
+    "tabs.donate": "Donate",
+    "tabs.settings": "Settings",
+
+    "home.weeklyReport": "Weekly Damage Report",
+    "home.faf": "Fuck Around Funds",
+    "home.afterDamage": "After Damage",
+    "home.canIAfford": "Reality Check — Can I afford this?",
+    "home.billsDue": "Bills Due This Week",
+
+    "donate.title": "Donate (Optional)",
+    "donate.blurb": "Donations are optional and don’t change features or remove ads. They just help keep Your Damn Budget free for everyone.",
+    "donate.paypal": "PayPal @mdsdoc",
+    "donate.cashapp": "Cash App $mdsdoc",
+
+    "settings.title": "Settings",
+    "settings.language": "Language",
+    "settings.tone": "Tone",
+    "settings.tone.spicy": "Spicy",
+    "settings.tone.clean": "Clean",
+    "settings.bank": "Bank Balance",
+    "settings.payday": "Payday weekday",
+    "settings.fafWeekly": "Fuck Around Funds (per week)",
+    "settings.export": "Export backup",
+    "settings.import": "Import backup",
+    "settings.save": "Save",
+
+    "timesheet.title": "Hours — Paycheck",
+    "timesheet.base": "Base hourly",
+    "timesheet.withholding": "Withholding (0–1)",
+    "timesheet.estimateFromCheck": "Estimate withholding from a real check",
+    "timesheet.exampleGross": "Example Gross",
+    "timesheet.exampleNet": "Example Net",
+    "timesheet.apply": "Apply",
+    "timesheet.regular": "Regular",
+    "timesheet.ot15": "OT ×1.5",
+    "timesheet.ot2": "OT ×2.0",
+    "timesheet.gross": "Gross",
+    "timesheet.net": "Net",
+    "timesheet.weekIncome": "This week income",
+
+    "copy.optionalTip": "This is a voluntary tip. It doesn’t grant ad-free or extra features."
+  },
+  "clean": {
+    "tabs.bills": "Must-Pay Bills",
+    "tabs.events": "One-Time & Overdue",
+    "tabs.envelopes": "Spending Buckets",
+    "tabs.loans": "Debts",
+    "home.weeklyReport": "Weekly Summary",
+    "home.faf": "Fun Money",
+    "home.afterDamage": "Left After Bills",
+    "home.canIAfford": "Can I afford this?",
+    "home.billsDue": "Coming Due This Week",
+    "donate.title": "Donate (Optional)",
+    "donate.blurb": "Donations are optional and don’t change features or remove ads.",
+    "settings.fafWeekly": "Fun Money (per week)"
+  }
+}
