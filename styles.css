@@ -55,6 +55,15 @@ img{display:block;max-width:100%}
 
 .container{padding:12px;max-width:1100px;margin:0 auto}
 
+/* Buttons (works for <button> and <a class="button">) */
+button, .button {
+  background:#0e2136;color:var(--ink);border:1px solid #17304e;
+  padding:8px 10px;border-radius:10px;width:100%;display:inline-block;text-align:center;
+  text-decoration:none;
+}
+button.primary, .button.primary{background:var(--accent);color:#012a2c;border:0;font-weight:700}
+button.ghost, .button.ghost{background:transparent;border:1px solid #274768}
+
 .grid{display:grid;gap:10px}
 .cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -75,12 +84,7 @@ th,td{padding:10px 12px;border-bottom:1px solid #162b45;font-size:14px}
 thead th{position:sticky;top:0;background:#0e2136;z-index:1}
 tbody tr:last-child td{border-bottom:none}
 
-input,select,button{background:#0e2136;color:var(--ink);border:1px solid #17304e;padding:8px 10px;border-radius:10px;width:100%}
-button{cursor:pointer}
-button.primary{background:var(--accent);color:#012a2c;border:0;font-weight:700}
-button.ghost{background:transparent;border:1px solid #274768}
 .row{display:flex;gap:8px;align-items:center}
-
 .badge{margin-left:8px;background:#11263f;color:#cbd5e1;font-size:11px;padding:2px 6px;border-radius:999px}
 
 .clickable{border-radius:12px;padding:4px}
