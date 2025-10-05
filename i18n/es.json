@@ -1,0 +1,67 @@
+{
+  "toneDefault": "spicy",
+  "spicy": {
+    "tabs.home": "Inicio",
+    "tabs.planner": "Bola de Cristal",
+    "tabs.timesheet": "Horas",
+    "tabs.bills": "Lo que no te puedes saltar",
+    "tabs.events": "Pendientes y atrasos",
+    "tabs.envelopes": "A dónde demonios se va",
+    "tabs.loans": "Tus malditas deudas",
+    "tabs.donate": "Donar",
+    "tabs.settings": "Ajustes",
+
+    "home.weeklyReport": "Informe de daños semanal",
+    "home.faf": "Fondo pa’ desmadre",
+    "home.afterDamage": "Después del golpe",
+    "home.canIAfford": "Reality check — ¿Me alcanza?",
+    "home.billsDue": "Vencimientos de esta semana",
+
+    "donate.title": "Donar (Opcional)",
+    "donate.blurb": "Las donaciones son opcionales y no cambian funciones ni quitan anuncios. Solo ayudan a mantener Your Damn Budget gratis.",
+    "donate.paypal": "PayPal @mdsdoc",
+    "donate.cashapp": "Cash App $mdsdoc",
+
+    "settings.title": "Ajustes",
+    "settings.language": "Idioma",
+    "settings.tone": "Estilo",
+    "settings.tone.spicy": "Picante",
+    "settings.tone.clean": "Suave",
+    "settings.bank": "Saldo bancario",
+    "settings.payday": "Día de pago",
+    "settings.fafWeekly": "Fondo pa’ desmadre (semanal)",
+    "settings.export": "Exportar copia",
+    "settings.import": "Importar copia",
+    "settings.save": "Guardar",
+
+    "timesheet.title": "Horas — Nómina",
+    "timesheet.base": "Sueldo base",
+    "timesheet.withholding": "Retención (0–1)",
+    "timesheet.estimateFromCheck": "Estimar retención con un recibo real",
+    "timesheet.exampleGross": "Bruto",
+    "timesheet.exampleNet": "Neto",
+    "timesheet.apply": "Aplicar",
+    "timesheet.regular": "Ordinarias",
+    "timesheet.ot15": "Extra ×1.5",
+    "timesheet.ot2": "Extra ×2.0",
+    "timesheet.gross": "Bruto",
+    "timesheet.net": "Neto",
+    "timesheet.weekIncome": "Ingreso semanal",
+
+    "copy.optionalTip": "Propina voluntaria. No otorga ad-free ni extras."
+  },
+  "clean": {
+    "tabs.bills": "Obligatorias",
+    "tabs.events": "Atrasos y únicas",
+    "tabs.envelopes": "Presupuestos",
+    "tabs.loans": "Deudas",
+    "home.weeklyReport": "Resumen semanal",
+    "home.faf": "Dinero para caprichos",
+    "home.afterDamage": "Restante",
+    "home.canIAfford": "¿Me alcanza?",
+    "home.billsDue": "Vencimientos de la semana",
+    "donate.title": "Donar (Opcional)",
+    "donate.blurb": "Las donaciones son opcionales y no cambian funciones ni quitan anuncios.",
+    "settings.fafWeekly": "Caprichos (semanal)"
+  }
+}
