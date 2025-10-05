@@ -1,10 +1,12 @@
-// Your Damn Budget v11 — ads+donate+i18n+withholding update
+// Your Damn Budget v12 — donate link fix, first-run wizard, install flow hardening
 
 import { load } from './storage.js';
 import { project, monthlyReality, computeWeekPay, iso } from './engine.js';
+import { triggerInstall } from './install.js';
 
 let state = load() || {};
 const app = document.getElementById('app');
+const wizard = document.getElementById('wizard');
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 function storageKey(){
@@ -102,7 +104,7 @@ function renderHome(){
   ];
   const party = funLines[Math.floor(Math.random()*funLines.length)];
 
-  const s = section(t('home.weeklyReport','Weekly Summary'), `
+  const s = section('Weekly Damage Report', `
     <div class="grid cols-3" style="margin-top:6px">
       <div>
         <div class="kpi-label">Cash This Week</div>
@@ -110,17 +112,17 @@ function renderHome(){
         <div class="help">${party}</div>
       </div>
       <div>
-        <div class="kpi-label">${t('home.faf','Fun Money')}</div>
+        <div class="kpi-label">Fuck Around Funds</div>
         <div class="kpi-value">${money(faf)}</div>
         <div class="help">Edit in Settings</div>
       </div>
       <div>
-        <div class="kpi-label">${t('home.afterDamage','Left After Bills')}</div>
+        <div class="kpi-label">After Damage</div>
         <div class="kpi-value ${liveBalance<0?'negative':'positive'}">${money(liveBalance)}</div>
       </div>
     </div>
 
-    <h3 style="margin-top:10px">${t('home.canIAfford','Can I afford this?')}</h3>
+    <h3 style="margin-top:10px">Reality Check — Can I afford this?</h3>
     <div class="grid cols-3" style="margin-top:6px">
       <div><label>Amount</label><input id="rc_amt" type="number" step="0.01" placeholder="0.00"></div>
       <div><label>When</label>
@@ -133,21 +135,21 @@ function renderHome(){
       <div id="rc_date_wrap" style="display:none"><label>Date</label><input id="rc_date" type="date" value="${todayISO()}"></div>
       <div><label>Pay from</label>
         <select id="rc_source">
-          <option value="faf">${t('home.faf','Fun Money')}</option>
+          <option value="faf">Fuck Around Funds</option>
           <option value="buckets">Weekly Buckets</option>
           <option value="bank">Bank</option>
         </select>
       </div>
       <div class="row"><button class="primary" id="rc_go">Can I afford this?</button></div>
       <div class="row" style="gap:6px">
-        <button class="ghost rc_quick" data-v="20">$20</button>
-        <button class="ghost rc_quick" data-v="40">$40</button>
-        <button class="ghost rc_quick" data-v="60">$60</button>
+        <button class="button ghost rc_quick" data-v="20">$20</button>
+        <button class="button ghost rc_quick" data-v="40">$40</button>
+        <button class="button ghost rc_quick" data-v="60">$60</button>
       </div>
     </div>
     <div id="rc_result" class="help" style="margin-top:6px"></div>
 
-    <h3 style="margin-top:12px">${t('home.billsDue','Coming Due This Week')}</h3>
+    <h3 style="margin-top:12px">Bills Due This Week</h3>
   `);
   app.appendChild(s);
 
@@ -227,7 +229,7 @@ function affordCheck(amount, source, byDate){
   let lensLeft = 0;
   let lensName = '';
 
-  if(source==='faf'){ lensLeft = faf; lensName = t('home.faf','Fun Money'); }
+  if(source==='faf'){ lensLeft = faf; lensName = 'Fuck Around Funds'; }
   else if(source==='buckets'){ lensLeft = Math.max(0, variables); lensName = 'Weekly Buckets'; }
   else { lensLeft = starting - dueBefore - safety; lensName = 'Bank'; }
 
@@ -254,7 +256,7 @@ function suggestHoursNeeded(afterPeriod){
   return Math.max(1, Math.ceil(Math.abs(afterPeriod) / Math.max(1,netPerHour)));
 }
 
-/* -------- Other views (existing functionality retained) -------- */
+/* -------- Other views -------- */
 function renderPlanner(){
   let weeks=[]; try{ weeks = project(state)||[]; }catch{ weeks=[]; }
   const wrap = section('Crystal Ball — 12-week', `
@@ -288,8 +290,8 @@ function renderTimesheet(){
 
   const s = section('Hours — Paycheck', `
     <div class="grid cols-3">
-      <div><label>${t('timesheet.base')}</label><input id="p_base" type="number" step="0.01" value="${u.baseHourly}"></div>
-      <div><label>${t('timesheet.withholding')}</label><input id="p_tax" type="number" step="0.01" value="${u.withholdingRatio}"></div>
+      <div><label>Base hourly</label><input id="p_base" type="number" step="0.01" value="${u.baseHourly}"></div>
+      <div><label>Withholding (0–1)</label><input id="p_tax" type="number" step="0.01" value="${u.withholdingRatio}"></div>
       <div><label>Payday (weekday)</label>
         <select id="p_weekday">
           ${DOW.map((d,i)=>`<option value="${i}" ${i===(state.user?.paydayWeekday??5)?'selected':''}>${d}</option>`).join('')}
@@ -297,24 +299,24 @@ function renderTimesheet(){
       </div>
     </div>
 
-    <h3 style="margin-top:10px">${t('timesheet.estimateFromCheck')}</h3>
+    <h3 style="margin-top:10px">Estimate withholding from a real check</h3>
     <div class="grid cols-3">
-      <div><label>${t('timesheet.exampleGross')}</label><input id="ex_gross" type="number" step="0.01" placeholder="e.g. 1200.00"></div>
-      <div><label>${t('timesheet.exampleNet')}</label><input id="ex_net" type="number" step="0.01" placeholder="e.g. 930.00"></div>
-      <div class="row"><button class="primary" id="applyRatio">${t('timesheet.apply')}</button></div>
+      <div><label>Example Gross</label><input id="ex_gross" type="number" step="0.01" placeholder="e.g. 1200.00"></div>
+      <div><label>Example Net</label><input id="ex_net" type="number" step="0.01" placeholder="e.g. 930.00"></div>
+      <div class="row"><button class="primary" id="applyRatio">Apply</button></div>
     </div>
 
     <h3 style="margin-top:10px">Hours this week</h3>
     <div class="grid cols-3">
-      <div><label>${t('timesheet.regular')}</label><input id="h_r" type="number" step="0.25" value="${hours.regular}"></div>
-      <div><label>${t('timesheet.ot15')}</label><input id="h_15" type="number" step="0.25" value="${hours.ot15}"></div>
-      <div><label>${t('timesheet.ot2')}</label><input id="h_2" type="number" step="0.25" value="${hours.ot2}"></div>
+      <div><label>Regular</label><input id="h_r" type="number" step="0.25" value="${hours.regular}"></div>
+      <div><label>OT ×1.5</label><input id="h_15" type="number" step="0.25" value="${hours.ot15}"></div>
+      <div><label>OT ×2.0</label><input id="h_2" type="number" step="0.25" value="${hours.ot2}"></div>
     </div>
 
     <div class="grid cols-3" style="margin-top:8px">
-      <div><div class="kpi-label">${t('timesheet.gross')}</div><div class="kpi-value">${money(pay.gross)}</div></div>
-      <div><div class="kpi-label">${t('timesheet.net')}</div><div class="kpi-value">${money(pay.net)}</div></div>
-      <div><div class="kpi-label">${t('timesheet.weekIncome')}</div><div class="kpi-value">${money(pay.net)}</div></div>
+      <div><div class="kpi-label">Gross</div><div class="kpi-value">${money(pay.gross)}</div></div>
+      <div><div class="kpi-label">Net</div><div class="kpi-value">${money(pay.net)}</div></div>
+      <div><div class="kpi-label">This week income</div><div class="kpi-value">${money(pay.net)}</div></div>
     </div>
 
     <div class="actions" style="margin-top:10px"><button class="primary" id="savePay">Save</button></div>
@@ -468,75 +470,65 @@ function renderLoans(){
   });
 }
 
-/* ---------- DONATE (new) ---------- */
+/* ---------- DONATE (link colors fixed, no amounts) ---------- */
 function renderDonate(){
-  const s = section(t('donate.title'), `
-    <div class="help">${t('donate.blurb')}</div>
-    <div class="grid cols-3" style="margin-top:8px">
-      <a class="button primary" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener">${t('donate.paypal')}</a>
-      <a class="button primary" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener">${t('donate.cashapp')}</a>
-      <div class="row" style="gap:6px">
-        <a class="button ghost" href="https://paypal.me/mdsdoc/1" target="_blank" rel="noopener">$1</a>
-        <a class="button ghost" href="https://paypal.me/mdsdoc/3" target="_blank" rel="noopener">$3</a>
-        <a class="button ghost" href="https://paypal.me/mdsdoc/5" target="_blank" rel="noopener">$5</a>
-        <a class="button ghost" href="https://paypal.me/mdsdoc/10" target="_blank" rel="noopener">$10</a>
-      </div>
+  const s = section('Donate (Optional)', `
+    <div class="help">Donations are optional and don’t change features or remove ads. They just help keep Your Damn Budget free for everyone.</div>
+    <div class="grid cols-2" style="margin-top:8px">
+      <a class="button primary" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener">PayPal @mdsdoc</a>
+      <a class="button primary" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener">Cash App $mdsdoc</a>
     </div>
-    <div class="help" style="margin-top:8px">${t('copy.optionalTip')}</div>
+    <div class="help" style="margin-top:8px">This is a voluntary tip. It doesn’t grant ad-free or extra features.</div>
   `);
   app.appendChild(s);
 }
 
-/* ---------- SETTINGS ---------- */
+/* ---------- SETTINGS (Install button included) ---------- */
 function renderSettings(){
   const u = state.user || (state.user = { paydayWeekday: 5, faFundsPerWeek: 50 });
   const bank = state.bank || (state.bank = { currentBalance: 0 });
-  state.ui = state.ui || { lang: (i18n.lang||'en'), tone: (i18n.tone||'spicy') }; save();
+  state.ui = state.ui || { lang: 'en', tone:'spicy', onboarded: false }; save();
 
-  const s = section(t('settings.title','Settings'), `
+  const s = section('Settings', `
     <div class="grid cols-3">
-      <div><label>${t('settings.language')}</label>
+      <div><label>Language</label>
         <select id="s_lang">
-          <option value="en" ${i18n.lang==='en'?'selected':''}>English</option>
-          <option value="es" ${i18n.lang==='es'?'selected':''}>Español</option>
+          <option value="en" ${ (state.ui.lang||'en')==='en'?'selected':''}>English</option>
+          <option value="es" ${ (state.ui.lang||'en')==='es'?'selected':''}>Español</option>
         </select>
       </div>
-      <div><label>${t('settings.tone')}</label>
+      <div><label>Tone</label>
         <select id="s_tone">
-          <option value="spicy" ${ (state.ui.tone||'spicy')==='spicy'?'selected':'' }>${t('settings.tone.spicy','Spicy')}</option>
-          <option value="clean" ${ (state.ui.tone||'spicy')==='clean'?'selected':'' }>${t('settings.tone.clean','Clean')}</option>
+          <option value="spicy" ${ (state.ui.tone||'spicy')==='spicy'?'selected':'' }>Spicy</option>
+          <option value="clean" ${ (state.ui.tone||'spicy')==='clean'?'selected':'' }>Clean</option>
         </select>
       </div>
-      <div><label>${t('settings.bank')}</label><input id="s_bank" type="number" step="0.01" value="${bank.currentBalance}"></div>
-      <div><label>${t('settings.payday')}</label>
+      <div><label>Bank Balance</label><input id="s_bank" type="number" step="0.01" value="${bank.currentBalance}"></div>
+      <div><label>Payday weekday</label>
         <select id="s_weekday">${DOW.map((d,i)=>`<option value="${i}" ${i===u.paydayWeekday?'selected':''}>${d}</option>`).join('')}</select>
       </div>
-      <div><label>${t('settings.fafWeekly')}</label><input id="s_faf" type="number" step="0.01" value="${u.faFundsPerWeek}"></div>
+      <div><label>Fuck Around Funds (per week)</label><input id="s_faf" type="number" step="0.01" value="${u.faFundsPerWeek}"></div>
+      <div><label>Install App</label><button id="installBtn" class="button primary" disabled>Install</button></div>
     </div>
 
     <div class="actions" style="margin-top:10px">
-      <button class="primary" id="s_save">${t('settings.save')}</button>
-      <button class="ghost" id="s_export">${t('settings.export')}</button>
-      <label class="ghost" style="padding:8px 10px;display:inline-block;cursor:pointer">
-        ${t('settings.import')}<input id="s_import" type="file" accept="application/json" style="display:none">
+      <button class="primary" id="s_save">Save</button>
+      <button class="button ghost" id="s_export">Export backup</button>
+      <label class="button ghost" style="padding:8px 10px;display:inline-block;cursor:pointer">
+        Import backup<input id="s_import" type="file" accept="application/json" style="display:none">
       </label>
     </div>
   `);
   app.appendChild(s);
 
-  s.querySelector('#s_save').onclick = async ()=>{
+  s.querySelector('#s_save').onclick = ()=>{
     state.bank.currentBalance = Number(s.querySelector('#s_bank').value||0);
     state.user.paydayWeekday = Number(s.querySelector('#s_weekday').value||5);
     state.user.faFundsPerWeek = Number(s.querySelector('#s_faf').value||0);
-
-    const newLang = s.querySelector('#s_lang').value;
-    const newTone = s.querySelector('#s_tone').value;
-    state.ui.lang = newLang; state.ui.tone = newTone;
-    save();
-    await loadI18n(newLang);
-    render();
+    state.ui.lang = s.querySelector('#s_lang').value;
+    state.ui.tone = s.querySelector('#s_tone').value;
+    save(); render();
   };
-
   s.querySelector('#s_export').onclick = ()=>{
     const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -548,9 +540,70 @@ function renderSettings(){
   s.querySelector('#s_import').onchange = (e)=>{
     const f = e.target.files?.[0]; if(!f) return;
     const r = new FileReader();
-    r.onload = async ()=>{ try{ state = JSON.parse(String(r.result)); save(); await loadI18n(state.ui?.lang||'en'); render(); }catch(err){ alert('Bad file'); } };
+    r.onload = ()=>{ try{ state = JSON.parse(String(r.result)); save(); render(); }catch(err){ alert('Bad file'); } };
     r.readAsText(f);
   };
+
+  const installBtn = s.querySelector('#installBtn');
+  // Enable if beforeinstallprompt already fired
+  installBtn.disabled = false;
+  installBtn.onclick = async ()=>{ await triggerInstall(); };
+}
+
+/* -------------- Wizard (first run) -------------- */
+function showWizard(){
+  const steps = [
+    { key:'bank', title:'Start here — Bank Balance', hint:'Tell us what’s in your account right now.', go:()=>activate('settings', '#s_bank') },
+    { key:'hours', title:'Your Paycheck', hint:'Base hourly + estimate withholding from one real check.', go:()=>activate('timesheet', '#p_base') },
+    { key:'bills', title:'The Shit You Can’t Skip', hint:'Rent, mortgage, utilities — add due day + amount.', go:()=>activate('bills') },
+    { key:'loans', title:'Your Damn Debts', hint:'Loans/IOUs with minimums and due day.', go:()=>activate('loans') }
+  ];
+  let idx = 0;
+
+  wizard.classList.remove('hidden');
+  wizard.innerHTML = `
+    <div class="panel">
+      <h2>${steps[0].title}</h2>
+      <div class="help" id="wizHint">${steps[0].hint}</div>
+      <div class="actions">
+        <button id="wizLater" class="button ghost">Do it later</button>
+        <button id="wizGo" class="button primary">Go</button>
+      </div>
+    </div>`;
+
+  const titleEl = wizard.querySelector('h2');
+  const hintEl = wizard.querySelector('#wizHint');
+
+  wizard.querySelector('#wizGo').onclick = ()=>{
+    steps[idx].go();
+    idx++;
+    if(idx >= steps.length){
+      wizard.classList.add('hidden');
+      (state.ui = state.ui || {}).onboarded = true; save();
+      return;
+    }
+    titleEl.textContent = steps[idx].title;
+    hintEl.textContent = steps[idx].hint;
+  };
+  wizard.querySelector('#wizLater').onclick = ()=>{
+    wizard.classList.add('hidden');
+    (state.ui = state.ui || {}).onboarded = true; save();
+  };
+}
+
+function activate(view, focusSel){
+  document.querySelectorAll('nav .tab').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`nav .tab[data-view="${view}"]`).classList.add('active');
+  render();
+  if (focusSel){
+    const tries = 8;
+    let n=0;
+    const iv = setInterval(()=>{
+      const el = document.querySelector(focusSel);
+      if(el){ el.scrollIntoView({block:'center'}); el.focus(); clearInterval(iv); }
+      if(++n>tries) clearInterval(iv);
+    },100);
+  }
 }
 
 /* -------------- Router -------------- */
@@ -572,9 +625,10 @@ document.querySelectorAll('nav .tab').forEach(btn=>{
   btn.onclick=()=>{ document.querySelectorAll('nav .tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); render(); };
 });
 
-/* Boot: load language then render */
+/* Boot */
 (async function boot(){
   const lang = state.ui?.lang || 'en';
   await loadI18n(lang);
   render();
+  if(!state.ui?.onboarded){ showWizard(); }
 })();
