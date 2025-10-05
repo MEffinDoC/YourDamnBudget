@@ -1,8 +1,11 @@
 :root{
   --bg:#0b2034; --panel:#101f33; --ink:#e6f1ff; --muted:#94a3b8;
   --accent:#0ea5a8; --accent-ink:#032a2c; --danger:#ef4444; --ok:#22c55e;
-  --tabw:110px; /* will be overwritten by nav.js after measuring */
+  --tabw:110px; /* nav.js adjusts after measuring */
+  --ad-h:60px;
 }
+@media (max-width:480px){ :root{ --ad-h:50px; } }
+
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 img{display:block;max-width:100%}
@@ -11,7 +14,17 @@ img{display:block;max-width:100%}
 .topbar .title{font-weight:700;font-size:18px;letter-spacing:.2px;display:inline-block;vertical-align:middle;margin-left:8px}
 .topbar .brand{width:28px;height:28px;border-radius:8px;display:inline-block;vertical-align:middle}
 
-/* NAV rail: scroll-snap + visible peek; NO glow/fade */
+/* Ad slots (reserved height to avoid layout shift) */
+.ad-slot{
+  height:var(--ad-h);
+  display:flex; align-items:center; justify-content:center;
+  border:1px dashed #17304e; border-radius:10px; margin-top:8px;
+  background:#0e2136;
+  overflow:hidden;
+}
+.ad-slot .house{font-size:12px;color:#cbd5e1;opacity:.9}
+
+/* NAV rail */
 .tabs{
   margin-top:8px;
   display:flex; gap:8px;
@@ -19,12 +32,11 @@ img{display:block;max-width:100%}
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
   scroll-snap-type:x mandatory;
-  padding-right:40px;               /* make space for half-cut peek */
+  padding-right:40px;
 }
 .tabs::-webkit-scrollbar{display:none}
-.tabs::after{ content:""; flex:0 0 40px; } /* forces half-cut peek on the right */
+.tabs::after{ content:""; flex:0 0 40px; }
 
-/* Tabs: unified width (set via --tabw), allow wrapping so text never spills */
 .tab{
   flex:0 0 var(--tabw);
   max-width: var(--tabw);
@@ -35,8 +47,8 @@ img{display:block;max-width:100%}
   font-size:12px;
   line-height:1.15;
   scroll-snap-align:start;
-  white-space:normal;               /* allow wrap */
-  overflow-wrap:anywhere;           /* break long words if needed */
+  white-space:normal;
+  overflow-wrap:anywhere;
 }
 .tab span{display:block;color:#ffffff;font-size:10px;margin-top:2px}
 .tab.active{outline:2px solid var(--accent);background:#0e2830}
@@ -81,3 +93,6 @@ button.ghost{background:transparent;border:1px solid #274768}
 
 .progress{height:10px;background:#0e2136;border:1px solid #17304e;border-radius:999px;overflow:hidden}
 .progress > div{height:100%;background:linear-gradient(90deg,#0ea5a8,#5eead4)}
+
+.footer{padding:10px 12px 16px}
+.footer .version{margin-top:6px;color:#94a3b8;font-size:12px;text-align:center;opacity:.8}
