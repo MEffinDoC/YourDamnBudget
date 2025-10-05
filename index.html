@@ -1,50 +1,402 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0f14" />
   <title>Your Damn Budget</title>
-  <meta name="description" content="Your Damn Budget — brutally honest budgeting that stays on your device."/>
-  <meta name="theme-color" content="#0b2034"/>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <style>
+    :root{--bg:#0d0f14;--panel:#131623;--muted:#7d8596;--text:#f3f6fc;--accent:#71e5bd;--danger:#ff6b6b;--ok:#8be28b}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    header{position:sticky;top:0;z-index:50;background:linear-gradient(0deg, rgba(13,15,20,.0), rgba(13,15,20,.9)), var(--bg);padding:10px 14px;border-bottom:1px solid #1e2334}
+    .title{font-weight:800;letter-spacing:.3px}
+    .subtitle{font-size:12px;color:var(--muted)}
+    .row{display:flex;align-items:center;gap:10px}
+    .spacer{flex:1}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#1a1e2b;border:1px solid #232a3d;color:#fff;padding:9px 12px;border-radius:12px;font-weight:700}
+    .btn:active{transform:translateY(1px)}
+    .danger{background:#281a1a;border-color:#412525;color:#ffb0b0}
 
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Your Damn Budget">
-  <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
+    /* AD slots */
+    .ad-slot{min-height:50px;display:flex;align-items:center;justify-content:center;border:1px dashed #2c334a;border-radius:12px;background:#10131d;color:#6b7280;margin:8px 14px}
 
-  <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest" type="application/manifest+json">
-  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=10">
+    main{flex:1;display:flex;flex-direction:column}
+    .page{display:none;padding:12px 14px 80px}
+    .page.active{display:block}
+
+    .card{background:var(--panel);border:1px solid #1d2235;border-radius:16px;padding:14px}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    input, select{width:100%;background:#0f1320;border:1px solid #212842;color:#eef2ff;border-radius:12px;padding:12px}
+    label{font-size:12px;color:var(--muted);display:block;margin:10px 0 6px}
+    .list{display:grid;gap:10px;margin-top:8px}
+    .rowItem{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#0f1320;border:1px solid #1b2238;border-radius:12px;padding:10px 12px}
+    .rowItem .meta{font-size:12px;color:var(--muted)}
+    .pill{font-weight:700;padding:6px 10px;border-radius:999px;background:#182038;border:1px solid #243055}
+
+    /* Bottom Nav */
+    nav{position:fixed;bottom:0;left:0;right:0;background:#0d0f14;border-top:1px solid #1e2334;padding:6px 12px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    nav button{background:#0f1320;border:1px solid #1b2238;color:#cbd5e1;border-radius:12px;padding:9px 4px;font-size:12px}
+    nav button.active{background:#1b2542;color:#fff;border-color:#2a3a68}
+
+    .muted{color:var(--muted)}
+    .right{float:right}
+
+    /* Donate modal (embedded) */
+    .donate-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:9998}
+    .donate-modal{position:fixed;inset:0;display:none;z-index:9999;align-items:center;justify-content:center}
+    .donate-card{width:min(520px,92vw);background:#101114;color:#f0f2f5;border-radius:18px;padding:20px 18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .donate-head{font-size:1.1rem;font-weight:700;margin-bottom:6px}
+    .donate-sub{font-size:.9rem;opacity:.9;margin-bottom:14px}
+    .donate-row{display:flex;gap:10px;align-items:center;margin:10px 0 14px}
+    .donate-row input[type="number"]{flex:1;background:#15171c;border:1px solid #262a33;color:#fff;border-radius:12px;padding:12px 14px;font-size:1.05rem}
+    .tabs{display:flex;background:#15171c;border:1px solid #262a33;border-radius:12px;padding:4px;margin-bottom:10px}
+    .tab{flex:1;text-align:center;padding:10px;border-radius:10px;cursor:pointer;font-weight:600}
+    .tab.active{background:#222532}
+    .paypanel{display:none}
+    .paypanel.active{display:block}
+    .dBtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:12px;border:1px solid #262a33;background:#1b1e27;color:#fff;font-weight:700;cursor:pointer;width:100%}
+    .dBtn:active{transform:translateY(1px)}
+    .dBtn.secondary{background:#15171c}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .fine{font-size:.78rem;opacity:.75;margin-top:10px}
+    .ok{margin-top:10px;text-align:center;font-size:.9rem;opacity:.9}
+    .x{position:absolute;right:14px;top:10px;background:#1b1e27;border:1px solid #262a33;color:#eee;border-radius:10px;padding:6px 10px;cursor:pointer}
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <img src="/YourDamnBudget/icons/flat-192.png" class="brand" alt="">
-    <div class="title">Your Damn Budget</div>
-    <nav class="tabs">
-      <button class="tab active" data-view="home">Home<br><span>Reality</span></button>
-      <button class="tab" data-view="planner">Crystal Ball<br><span>12-week</span></button>
-      <button class="tab" data-view="timesheet">Hours<br><span>Paycheck</span></button>
-      <button class="tab" data-view="bills">Shit That Must Get Paid<br><span>bills & housing</span></button>
-      <button class="tab" data-view="events">Catch-Up Shit<br><span>one-time & overdue</span></button>
-      <button class="tab" data-view="envelopes">Where It Goes<br><span>weekly buckets</span></button>
-      <button class="tab" data-view="loans">Your Damn Debts<br><span>loans & IOUs</span></button>
-      <button class="tab" data-view="settings">Settings<br><span>tweaks</span></button>
-    </nav>
-  </header>
+  <div class="app">
+    <header class="row">
+      <div>
+        <div class="title">Your Damn Budget</div>
+        <div class="subtitle">Mobile‑first • PWA • Offline</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn" onclick="openDonate()">Support the App</button>
+    </header>
 
-  <main id="app" class="container"></main>
-  <div id="wizard" class="overlay hidden"></div>
+    <!-- Top ad banner -->
+    <div class="ad-slot" id="ad-top">Top Ad — paste your ad snippet here</div>
+
+    <main>
+      <!-- HOME -->
+      <section id="page-home" class="page active">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <div>
+              <div class="subtitle">Monthly Summary</div>
+              <h2 style="margin:6px 0 0">Reality Check</h2>
+            </div>
+            <button class="btn" onclick="recompute()">Refresh</button>
+          </div>
+          <div class="kpi" style="margin-top:10px">
+            <div class="card" style="background:#0f1320">
+              <div class="subtitle">Income</div>
+              <div id="kpiIncome" style="font-size:22px;font-weight:800;margin-top:4px">$0.00</div>
+            </div>
+            <div class="card" style="background:#0f1320">
+              <div class="subtitle">Expenses</div>
+              <div id="kpiExpenses" style="font-size:22px;font-weight:800;margin-top:4px">$0.00</div>
+            </div>
+            <div class="card" style="background:#0f1320">
+              <div class="subtitle">Hours</div>
+              <div id="kpiHours" style="font-size:22px;font-weight:800;margin-top:4px">0.0</div>
+            </div>
+            <div class="card" style="background:#0f1320">
+              <div class="subtitle">Net</div>
+              <div id="kpiNet" style="font-size:22px;font-weight:800;margin-top:4px">$0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="subtitle">This Month’s Notes</div>
+          <textarea id="notes" rows="4" placeholder="Add quick notes..." style="width:100%;background:#0f1320;border:1px solid #1b2238;color:#eef2ff;border-radius:12px;padding:12px;margin-top:8px"></textarea>
+          <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" onclick="saveNotes()">Save Notes</button></div>
+        </div>
+      </section>
+
+      <!-- INCOME -->
+      <section id="page-income" class="page">
+        <div class="card">
+          <h2 style="margin:0 0 6px">Income</h2>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px">
+              <label>Amount</label>
+              <input id="incAmount" type="number" step="0.01" placeholder="e.g. 1200.00" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label>Source</label>
+              <input id="incSource" placeholder="e.g. Paycheck" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label>Date</label>
+              <input id="incDate" type="date" />
+            </div>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" onclick="addIncome()">Add Income</button></div>
+        </div>
+        <div class="list" id="incomeList"></div>
+      </section>
+
+      <!-- EXPENSES -->
+      <section id="page-expenses" class="page">
+        <div class="card">
+          <h2 style="margin:0 0 6px">Expenses</h2>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px">
+              <label>Amount</label>
+              <input id="expAmount" type="number" step="0.01" placeholder="e.g. 65.49" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label>Category</label>
+              <input id="expCat" placeholder="e.g. Groceries" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label>Date</label>
+              <input id="expDate" type="date" />
+            </div>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" onclick="addExpense()">Add Expense</button></div>
+        </div>
+        <div class="list" id="expenseList"></div>
+      </section>
+
+      <!-- HOURS -->
+      <section id="page-hours" class="page">
+        <div class="card">
+          <h2 style="margin:0 0 6px">Hours</h2>
+          <div class="row" style="gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:120px">
+              <label>Hours</label>
+              <input id="hrsCount" type="number" step="0.25" placeholder="e.g. 8.0" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label>Date</label>
+              <input id="hrsDate" type="date" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label>Note</label>
+              <input id="hrsNote" placeholder="e.g. OT, shift, etc." />
+            </div>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn" onclick="addHours()">Add Hours</button></div>
+        </div>
+        <div class="list" id="hoursList"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="page-settings" class="page">
+        <div class="card">
+          <h2 style="margin:0 0 6px">Settings</h2>
+          <div class="subtitle">General</div>
+          <div class="row" style="gap:10px;align-items:center;margin-top:8px">
+            <label>Currency</label>
+            <select id="currencySel" style="max-width:160px">
+              <option value="USD">USD</option>
+            </select>
+            <span class="muted">(fixed for now)</span>
+          </div>
+          <div class="subtitle" style="margin-top:14px">Danger Zone</div>
+          <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn danger" onclick="if(confirm('Reset all data?')) resetAll()">Reset All Data</button>
+            <button class="btn" onclick="exportData()">Export Backup</button>
+            <input id="importFile" type="file" accept="application/json" style="display:none" onchange="importData(event)" />
+            <button class="btn" onclick="document.getElementById('importFile').click()">Import Backup</button>
+          </div>
+          <div class="subtitle" style="margin-top:14px">Donate</div>
+          <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn" onclick="openDonate()">Support the App</button>
+            <span class="muted">Donations are voluntary and do <b>not</b> unlock features or content.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom ad banner -->
+    <div class="ad-slot" id="ad-bottom">Bottom Ad — paste your ad snippet here</div>
+
+    <!-- Bottom Nav -->
+    <nav>
+      <button id="nav-home" class="active" onclick="showPage('home')">Home</button>
+      <button id="nav-income" onclick="showPage('income')">Income</button>
+      <button id="nav-expenses" onclick="showPage('expenses')">Expenses</button>
+      <button id="nav-hours" onclick="showPage('hours')">Hours</button>
+      <button id="nav-settings" onclick="showPage('settings')">Settings</button>
+    </nav>
+  </div>
+
+  <!-- Donate Modal (PayPal + Cash App; any amount; crypto via Cash App) -->
+  <div class="donate-backdrop" id="donateBackdrop" onclick="closeDonate()"></div>
+  <div class="donate-modal" id="donateModal" role="dialog" aria-modal="true">
+    <div class="donate-card">
+      <button class="x" onclick="closeDonate()">Close</button>
+      <div class="donate-head">Keep “Your Damn Budget” going 💸</div>
+      <div class="donate-sub">Donations are optional and <b>do not</b> unlock features. We accept <b>cash & cards (PayPal)</b> and <b>fiat or crypto via Cash App</b>.</div>
+      <div class="donate-row">
+        <label for="donateAmount" style="position:absolute;left:-9999px">Amount (USD)</label>
+        <input id="donateAmount" type="number" min="0" step="0.01" placeholder="Enter amount (USD)" inputmode="decimal" />
+      </div>
+      <div class="tabs">
+        <div class="tab active" id="tab-paypal" onclick="switchTab('paypal')">PayPal (Cash/Card)</div>
+        <div class="tab" id="tab-cashapp" onclick="switchTab('cashapp')">Cash App (Fiat or Crypto)</div>
+      </div>
+      <div class="paypanel active" id="panel-paypal" aria-labelledby="tab-paypal">
+        <button class="dBtn" onclick="payWithPayPal()">Pay with PayPal</button>
+        <div class="ok">Opens PayPal app if installed, otherwise a small web view.</div>
+      </div>
+      <div class="paypanel" id="panel-cashapp" aria-labelledby="tab-cashapp">
+        <div class="row2">
+          <button class="dBtn" onclick="payWithCashApp()">Open Cash App</button>
+          <button class="dBtn secondary" onclick="copyCashTag()">Copy $mdsdoc</button>
+        </div>
+        <div class="ok">Use Cash App to pay with USD <i>or</i> Bitcoin/Lightning — your choice.</div>
+      </div>
+      <div class="fine">Questions? hello@ydb.app</div>
+    </div>
+  </div>
 
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/YourDamnBudget/sw.js', { scope: '/YourDamnBudget/' })
-          .catch(err => console.warn('SW registration failed', err));
+    // ---------- State & Storage ----------
+    const SKEY = 'ydb.v2';
+    const state = JSON.parse(localStorage.getItem(SKEY) || '{}');
+    state.income = state.income || [];     // {id, amount, source, date}
+    state.expenses = state.expenses || []; // {id, amount, cat, date}
+    state.hours = state.hours || [];       // {id, hours, date, note}
+    state.notes = state.notes || '';
+
+    const $ = sel => document.querySelector(sel);
+
+    function save(){ localStorage.setItem(SKEY, JSON.stringify(state)); }
+
+    // ---------- Navigation ----------
+    function showPage(id){
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      $('#page-'+id).classList.add('active');
+      $('#nav-'+id).classList.add('active');
+      if(id==='home') recompute();
+      if(id==='income') renderIncome();
+      if(id==='expenses') renderExpenses();
+      if(id==='hours') renderHours();
+    }
+
+    // ---------- Home / KPIs ----------
+    function fmt(n){return Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});}
+    function recompute(){
+      const month = new Date().toISOString().slice(0,7); // YYYY-MM
+      const inc = state.income.filter(r=> (r.date||'').startsWith(month)).reduce((a,r)=>a+Number(r.amount||0),0);
+      const exp = state.expenses.filter(r=> (r.date||'').startsWith(month)).reduce((a,r)=>a+Number(r.amount||0),0);
+      const hrs = state.hours.filter(r=> (r.date||'').startsWith(month)).reduce((a,r)=>a+Number(r.hours||0),0);
+      $('#kpiIncome').textContent = `$${fmt(inc)}`;
+      $('#kpiExpenses').textContent = `$${fmt(exp)}`;
+      $('#kpiHours').textContent = `${hrs.toFixed(2)}`;
+      $('#kpiNet').textContent = `$${fmt(inc - exp)}`;
+      $('#notes').value = state.notes || '';
+    }
+    function saveNotes(){ state.notes = $('#notes').value; save(); alert('Notes saved'); }
+
+    // ---------- Income ----------
+    function addIncome(){
+      const amount = Number($('#incAmount').value||0);
+      const source = $('#incSource').value.trim();
+      const date = $('#incDate').value || new Date().toISOString().slice(0,10);
+      if(!amount){ return alert('Enter amount'); }
+      state.income.push({id:crypto.randomUUID(), amount, source:source||'Income', date});
+      save(); $('#incAmount').value=''; $('#incSource').value=''; $('#incDate').value='';
+      renderIncome(); recompute();
+    }
+    function delIncome(id){ state.income = state.income.filter(r=>r.id!==id); save(); renderIncome(); recompute(); }
+    function renderIncome(){
+      const list = $('#incomeList'); list.innerHTML='';
+      state.income.slice().reverse().forEach(r=>{
+        const el=document.createElement('div'); el.className='rowItem';
+        el.innerHTML=`<div><div><b>$${fmt(r.amount)}</b> <span class="meta">${r.source||''}</span></div><div class="meta">${r.date||''}</div></div><button class="btn danger" onclick="delIncome('${r.id}')">Delete</button>`;
+        list.appendChild(el);
       });
     }
+
+    // ---------- Expenses ----------
+    function addExpense(){
+      const amount = Number($('#expAmount').value||0);
+      const cat = $('#expCat').value.trim();
+      const date = $('#expDate').value || new Date().toISOString().slice(0,10);
+      if(!amount){ return alert('Enter amount'); }
+      state.expenses.push({id:crypto.randomUUID(), amount, cat:cat||'Expense', date});
+      save(); $('#expAmount').value=''; $('#expCat').value=''; $('#expDate').value='';
+      renderExpenses(); recompute();
+    }
+    function delExpense(id){ state.expenses = state.expenses.filter(r=>r.id!==id); save(); renderExpenses(); recompute(); }
+    function renderExpenses(){
+      const list = $('#expenseList'); list.innerHTML='';
+      state.expenses.slice().reverse().forEach(r=>{
+        const el=document.createElement('div'); el.className='rowItem';
+        el.innerHTML=`<div><div><b>$${fmt(r.amount)}</b> <span class="meta">${r.cat||''}</span></div><div class="meta">${r.date||''}</div></div><button class="btn danger" onclick="delExpense('${r.id}')">Delete</button>`;
+        list.appendChild(el);
+      });
+    }
+
+    // ---------- Hours ----------
+    function addHours(){
+      const hours = Number($('#hrsCount').value||0);
+      const date = $('#hrsDate').value || new Date().toISOString().slice(0,10);
+      const note = $('#hrsNote').value.trim();
+      if(!hours){ return alert('Enter hours'); }
+      state.hours.push({id:crypto.randomUUID(), hours, date, note});
+      save(); $('#hrsCount').value=''; $('#hrsDate').value=''; $('#hrsNote').value='';
+      renderHours(); recompute();
+    }
+    function delHours(id){ state.hours = state.hours.filter(r=>r.id!==id); save(); renderHours(); recompute(); }
+    function renderHours(){
+      const list = $('#hoursList'); list.innerHTML='';
+      state.hours.slice().reverse().forEach(r=>{
+        const el=document.createElement('div'); el.className='rowItem';
+        el.innerHTML=`<div><div><b>${r.hours.toFixed(2)} hrs</b> <span class="meta">${r.note||''}</span></div><div class="meta">${r.date||''}</div></div><button class="btn danger" onclick="delHours('${r.id}')">Delete</button>`;
+        list.appendChild(el);
+      });
+    }
+
+    // ---------- Export / Import / Reset ----------
+    function exportData(){
+      const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'your-damn-budget-backup.json'; a.click();
+    }
+    function importData(ev){
+      const file = ev.target.files?.[0]; if(!file) return;
+      const reader = new FileReader(); reader.onload = () => {
+        try{ const data = JSON.parse(reader.result); Object.assign(state, data); save(); alert('Import complete'); recompute(); renderIncome(); renderExpenses(); renderHours(); }
+        catch(e){ alert('Invalid file'); }
+      }; reader.readAsText(file);
+    }
+    function resetAll(){ localStorage.removeItem(SKEY); location.reload(); }
+
+    // ---------- Donate modal logic ----------
+    const PAYPAL_USER = 'mdsdoc';
+    const CASHAPP_TAG = 'mdsdoc';
+    const donateModal = document.getElementById('donateModal');
+    const donateBackdrop = document.getElementById('donateBackdrop');
+
+    function openDonate(){ donateModal.style.display='flex'; donateBackdrop.style.display='block'; setTimeout(()=>document.getElementById('donateAmount').focus(), 50); }
+    function closeDonate(){ donateModal.style.display='none'; donateBackdrop.style.display='none'; }
+    function switchTab(t){ ['paypal','cashapp'].forEach(id=>{ document.getElementById('tab-'+id).classList.toggle('active', id===t); document.getElementById('panel-'+id).classList.toggle('active', id===t); }); }
+    function getAmtStr(){ const raw = document.getElementById('donateAmount').value.trim(); if(raw==='') return ''; const v = parseFloat(raw); if(isNaN(v)||v<0){ alert('Enter a valid amount or leave blank.'); throw new Error('bad'); } return (Math.round(v*100)/100).toFixed(2); }
+    function payWithPayPal(){ let a; try{a=getAmtStr();}catch{return;} const app = a?`paypal://send?recipient=${encodeURIComponent(PAYPAL_USER)}&amount=${a}`:`paypal://send?recipient=${encodeURIComponent(PAYPAL_USER)}`; const web = a?`https://www.paypal.me/${encodeURIComponent(PAYPAL_USER)}/${a}`:`https://www.paypal.me/${encodeURIComponent(PAYPAL_USER)}`; openAppThenFallback(app, web); }
+    function payWithCashApp(){ let a; try{a=getAmtStr();}catch{return;} const app = a?`cashapp://send?amount=${a}&recipient=$${encodeURIComponent(CASHAPP_TAG)}`:`cashapp://send?recipient=$${encodeURIComponent(CASHAPP_TAG)}`; const web = a?`https://cash.app/$${encodeURIComponent(CASHAPP_TAG)}/${a}`:`https://cash.app/$${encodeURIComponent(CASHAPP_TAG)}`; openAppThenFallback(app, web); }
+    function copyCashTag(){ navigator.clipboard.writeText(`$${CASHAPP_TAG}`).then(()=> toast('Cashtag copied')); }
+
+    function openAppThenFallback(appUrl, webUrl){ const start=Date.now(); window.location.href=appUrl; setTimeout(()=>{ if(Date.now()-start<1200) window.location.href=webUrl; }, 900); }
+    let _toastT; function toast(msg){ clearTimeout(_toastT); const t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#1b1e27;border:1px solid #262a33;color:#fff;padding:10px 14px;border-radius:12px;z-index:10000'; document.body.appendChild(t); _toastT=setTimeout(()=>t.remove(),1700); }
+
+    // ---------- PWA: register service worker ----------
+    if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('/service-worker.js'); }); }
+
+    // Initial render
+    recompute(); renderIncome(); renderExpenses(); renderHours();
   </script>
-  <script src="/YourDamnBudget/nav.js?v=7" defer></script>
-  <script type="module" src="/YourDamnBudget/app.js?v=10"></script>
 </body>
 </html>
