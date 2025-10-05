@@ -1,11 +1,11 @@
 // sw.js — PWA hardening for GitHub Pages
 const SCOPE = '/YourDamnBudget/';
-const CACHE = 'ydb-v13';
+const CACHE = 'ydb-v13a';
 
 const ASSETS = [
   `${SCOPE}`, `${SCOPE}index.html`,
   `${SCOPE}styles.css?v=13`, `${SCOPE}nav.js?v=7`,
-  `${SCOPE}ads.js?v=11`, `${SCOPE}install.js?v=12`, `${SCOPE}app.js?v=13`,
+  `${SCOPE}ads.js?v=11`, `${SCOPE}install.js?v=12`, `${SCOPE}app.js?v=13a`,
   `${SCOPE}engine.js`, `${SCOPE}storage.js`,
   `${SCOPE}manifest.webmanifest`,
   `${SCOPE}icons/flat-192.png`, `${SCOPE}icons/flat-512.png`
