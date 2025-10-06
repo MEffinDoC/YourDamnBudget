@@ -1,3 +1,4 @@
+/* YDB v14 */
 :root{
   --bg:#0b2034; --panel:#101f33; --ink:#e6f1ff; --muted:#94a3b8;
   --accent:#0ea5a8; --accent-ink:#032a2c; --danger:#ef4444; --ok:#22c55e;
@@ -69,29 +70,19 @@ tbody tr:last-child td{border-bottom:none}
 .row{display:flex;gap:8px;align-items:center}
 .badge{margin-left:8px;background:#11263f;color:#cbd5e1;font-size:11px;padding:2px 6px;border-radius:999px}
 
-/* ===== Wizard overlay & panel — improved margins/border ===== */
+/* ===== Wizard overlay & panel ===== */
 .overlay{
   position:fixed; inset:0;
-  /* padding uses safe-area to avoid hugging notches & top bars */
   padding:calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
-  background:#0b2034e6; /* a bit more opaque */
-  backdrop-filter:blur(8px);
-  z-index:60;
+  background:#0b2034e6; backdrop-filter:blur(8px); z-index:60;
   display:grid; place-items:center;
 }
 .overlay.hidden{display:none}
-
 .panel{
   background:linear-gradient(180deg,#0f2238,#0d1e30);
   border:1px solid #1f3a57;
-  box-shadow:
-    0 18px 44px rgba(0,0,0,.45),
-    0 0 0 1px rgba(14,33,54,.6) inset;
-  border-radius:18px;
-  padding:16px;
-  width:min(740px,94vw);
-  max-height:86vh;
-  overflow:auto;
+  box-shadow:0 18px 44px rgba(0,0,0,.45), 0 0 0 1px rgba(14,33,54,.6) inset;
+  border-radius:18px; padding:16px; width:min(740px,94vw); max-height:86vh; overflow:auto;
 }
 .panel h2{margin-bottom:6px}
 .panel .step-hint{color:#cbd5e1;font-size:13px;margin-bottom:8px}
@@ -103,5 +94,9 @@ input,select{background:#0e2136;color:var(--ink);border:1px solid #17304e;paddin
 .progress{height:10px;background:#0e2136;border:1px solid #17304e;border-radius:999px;overflow:hidden;margin-bottom:10px}
 .progress > div{height:100%;background:linear-gradient(90deg,#0ea5a8,#5eead4)}
 
+details.disclosure{margin-top:8px}
+details.disclosure > summary{cursor:pointer;color:#cbd5e1}
+
+/* Footer */
 .footer{padding:10px 12px 16px}
 .footer .version{margin-top:6px;color:#94a3b8;font-size:12px;text-align:center;opacity:.8}
