@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- YDB v14 -->
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>Your Damn Budget</title>
   <meta name="description" content="Your Damn Budget — brutally honest budgeting that stays on your device."/>
   <meta name="theme-color" content="#0b2034"/>
+  <meta name="x-ydb-version" content="14">
 
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,15 +16,17 @@
   <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
 
   <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest" type="application/manifest+json">
-  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=13">
+  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=14">
 </head>
 <body>
   <header class="topbar">
     <img src="/YourDamnBudget/icons/flat-192.png" class="brand" alt="">
     <div class="title">Your Damn Budget</div>
 
+    <!-- TOP BANNER AD -->
     <div id="ad-top" class="ad-slot" aria-label="ad-top"></div>
 
+    <!-- NAV -->
     <nav class="tabs">
       <button class="tab active" data-view="home">Home<br><span>Reality</span></button>
       <button class="tab" data-view="planner">Crystal Ball<br><span>12-week</span></button>
@@ -38,12 +42,13 @@
 
   <main id="app" class="container"></main>
 
-  <!-- Wizard -->
+  <!-- First-run wizard -->
   <div id="wizard" class="overlay hidden" role="dialog" aria-modal="true"></div>
 
+  <!-- BOTTOM BANNER AD -->
   <footer class="footer">
     <div id="ad-bottom" class="ad-slot" aria-label="ad-bottom"></div>
-    <div class="version">YDB v13a</div>
+    <div class="version">YDB v14</div>
   </footer>
 
   <script>
@@ -57,6 +62,6 @@
   <script src="/YourDamnBudget/nav.js?v=7" defer></script>
   <script src="/YourDamnBudget/ads.js?v=11" defer></script>
   <script src="/YourDamnBudget/install.js?v=12" defer></script>
-  <script type="module" src="/YourDamnBudget/app.js?v=13a"></script>
+  <script type="module" src="/YourDamnBudget/app.js?v=14"></script>
 </body>
 </html>
