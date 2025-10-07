@@ -1,12 +1,5 @@
 {
-  "version": "14a",
-  "builtAt": "2025-10-06T02:52:14Z",
-  "files": {
-    "index.html": "v14a",
-    "styles.css": "v14a",
-    "app.js": "v14a",
-    "engine.js": "v14a",
-    "sw.js": "v14a",
-    "wizard.js": "v14a"
-  }
+  "version": "14b",
+  "builtAt": "now",
+  "files": { "index.html":"v14b", "styles.css":"v14b", "app.js":"v14b", "engine.js":"v14b", "wizard.js":"v14b", "sw.js":"v14b" }
 }
