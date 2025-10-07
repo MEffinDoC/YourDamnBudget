@@ -1,63 +1,28 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <!-- YDB v14a -->
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Your Damn Budget</title>
-  <meta name="description" content="Your Damn Budget — brutally honest budgeting that stays on your device."/>
-  <meta name="theme-color" content="#0b2034"/>
-  <meta name="x-ydb-version" content="14a">
-
-  <!-- iOS PWA -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Your Damn Budget">
-  <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
-
-  <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest" type="application/manifest+json">
-  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=14a">
-</head>
-<body>
-  <header class="topbar">
-    <img src="/YourDamnBudget/icons/flat-192.png" class="brand" alt="">
-    <div class="title">Your Damn Budget</div>
-
-    <div id="ad-top" class="ad-slot" aria-label="ad-top"></div>
-
-    <nav class="tabs">
-      <button class="tab active" data-view="home">Home<br><span>Reality</span></button>
-      <button class="tab" data-view="planner">Crystal Ball<br><span>12-week</span></button>
-      <button class="tab" data-view="timesheet">Hours<br><span>Paycheck</span></button>
-      <button class="tab" data-view="bills">Shit That Must Get Paid<br><span>bills & housing</span></button>
-      <button class="tab" data-view="events">Catch-Up Shit<br><span>one-time & overdue</span></button>
-      <button class="tab" data-view="envelopes">Where It Goes<br><span>weekly buckets</span></button>
-      <button class="tab" data-view="loans">Your Damn Debts<br><span>loans & IOUs</span></button>
-      <button class="tab" data-view="donate">Donate<br><span>optional</span></button>
-      <button class="tab" data-view="settings">Settings<br><span>tweaks</span></button>
-    </nav>
-  </header>
-
-  <main id="app" class="container"></main>
-
-  <div id="wizard" class="overlay hidden" role="dialog" aria-modal="true"></div>
-
-  <footer class="footer">
-    <div id="ad-bottom" class="ad-slot" aria-label="ad-bottom"></div>
-    <div class="version">YDB v14a</div>
-  </footer>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/YourDamnBudget/sw.js', { scope: '/YourDamnBudget/' })
-          .catch(err => console.warn('SW registration failed', err));
-      });
-    }
-  </script>
-  <script src="/YourDamnBudget/nav.js?v=7" defer></script>
-  <script src="/YourDamnBudget/ads.js?v=11" defer></script>
-  <script src="/YourDamnBudget/install.js?v=12" defer></script>
-  <script type="module" src="/YourDamnBudget/app.js?v=14a"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Your Damn Budget</title><meta name="theme-color" content="#0b2034"/>
+<link rel="manifest" href="/YourDamnBudget/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
+<link rel="stylesheet" href="/YourDamnBudget/styles.css?v=14b">
+</head><body>
+<header class="topbar">
+  <img src="/YourDamnBudget/icons/flat-192.png" class="brand" alt=""><div class="title">Your Damn Budget</div>
+  <div id="ad-top" class="ad-slot"><div class="house">Top banner</div></div>
+  <nav class="tabs">
+    <button class="tab active" data-view="home">Home<br><span>Reality</span></button>
+    <button class="tab" data-view="planner">Crystal Ball<br><span>12-week</span></button>
+    <button class="tab" data-view="timesheet">Hours<br><span>Paycheck</span></button>
+    <button class="tab" data-view="bills">Shit That Must Get Paid<br><span>bills & housing</span></button>
+    <button class="tab" data-view="events">Catch-Up Shit<br><span>one-time & overdue</span></button>
+    <button class="tab" data-view="envelopes">Where It Goes<br><span>weekly buckets</span></button>
+    <button class="tab" data-view="loans">Your Damn Debts<br><span>loans & IOUs</span></button>
+    <button class="tab" data-view="donate">Donate<br><span>optional</span></button>
+    <button class="tab" data-view="settings">Settings<br><span>tweaks</span></button>
+  </nav>
+</header>
+<main id="app" class="container"></main>
+<div id="wizard" class="overlay hidden" role="dialog" aria-modal="true"></div>
+<footer class="footer"><div id="ad-bottom" class="ad-slot"><div class="house">Bottom banner</div></div><div class="version">YDB v14b</div></footer>
+<script>if('serviceWorker'in navigator){addEventListener('load',()=>navigator.serviceWorker.register('/YourDamnBudget/sw.js',{scope:'/YourDamnBudget/'}));}</script>
+<script type="module" src="/YourDamnBudget/app.js?v=14b"></script>
+</body></html>
