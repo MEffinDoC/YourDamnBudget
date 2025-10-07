@@ -1,4 +1,4 @@
-// YDB v15 — full app (no placeholders)
+// YDB v15.1 — no placeholders anywhere
 import { computeWeekPay, iso, money, paydayBounds } from './engine.js';
 
 const app=document.getElementById('app'), wizard=document.getElementById('wizard'); const TABS=document.querySelector('nav.tabs');
@@ -23,19 +23,18 @@ function renderHome(){
   const faf=+state.user.faFundsPerWeek||0;
   const starting=bankBal+weeklyNet;
 
-  // upcoming within pay period (bills, loans, events) minus already paid entries
+  // build upcoming list (within pay period), excluding items marked paid
   const items=[]; const paidKey=p=>`${p.kind}:${p.id}:${p.dateISO}`; const paid=new Set(state.paid.map(p=>paidKey(p)));
   (state.bills||[]).forEach(b=>{for(let m=0;m<2;m++){const d=new Date(start.getFullYear(),start.getMonth()+m,b.dueDay); if(d>=start&&d<end){const it={kind:'bill',id:b.id,name:b.name,dateISO:iso(d),amount:+b.amount}; if(!paid.has(paidKey(it))) items.push(it);}}});
   (state.loans||[]).forEach(l=>{for(let m=0;m<2;m++){const d=new Date(start.getFullYear(),start.getMonth()+m,l.dueDay); if(d>=start&&d<end){const it={kind:'loan',id:l.id,name:l.name,dateISO:iso(d),amount:+l.minimumPayment}; if(!paid.has(paidKey(it))) items.push(it);}}});
   (state.events||[]).forEach(e=>{const d=new Date(e.date); if(d>=start&&d<end){const it={kind:'event',id:e.id,name:e.name||'One-time',dateISO:iso(d),amount:+e.amount}; if(!paid.has(paidKey(it))) items.push(it);}}));
   items.sort((a,b)=>a.dateISO.localeCompare(b.dateISO)||a.name.localeCompare(b.name));
 
-  const paidAmt=(state.paid||[]).filter(p=>new Date(p.dateISO)>=start&&new Date(p.dateISO)<end).reduce((s,p)=>{
-    if(p.kind==='bill'){const b=state.bills.find(x=>x.id===p.id); return s+(b?+b.amount:0);}
-    if(p.kind==='loan'){const l=state.loans.find(x=>x.id===p.id); return s+(l?+l.minimumPayment:0);}
-    if(p.kind==='event'){const e=state.events.find(x=>x.id===p.id); return s+(e?+e.amount:0);}
-    return s;
-  },0);
+  const paidAmt=(state.paid||[]).filter(p=>{const d=new Date(p.dateISO);return d>=start&&d<end;})
+    .reduce((s,p)=>{ if(p.kind==='bill'){const b=state.bills.find(x=>x.id===p.id); return s+(b?+b.amount:0);}
+                     if(p.kind==='loan'){const l=state.loans.find(x=>x.id===p.id); return s+(l?+l.minimumPayment:0);}
+                     if(p.kind==='event'){const e=state.events.find(x=>x.id===p.id); return s+(e?+e.amount:0);}
+                     return s; },0);
 
   const live=starting - paidAmt - variables - faf;
   const kpis=section('Weekly Damage Report',`
@@ -50,14 +49,12 @@ function renderHome(){
     </div>`);
   app.appendChild(kpis);
 
-  // Upcoming list with "I paid it" instant remove
   const upcoming=section('Due this pay period',`
     <div class="table-scroll"><table><thead><tr><th>Date</th><th>What</th><th>$</th><th></th></tr></thead>
     <tbody>${items.length?items.map(it=>`<tr><td>${it.dateISO}</td><td>${it.name}<span class="badge">${it.kind}</span></td><td>${money(it.amount)}</td><td><button class="button" data-paid='${JSON.stringify(it)}'>Paid ✔</button></td></tr>`).join(''):`<tr><td colspan="4" class="help">Nothing else due before ${iso(end)}.</td></tr>`}</tbody></table></div>`);
   app.appendChild(upcoming);
   upcoming.querySelectorAll('[data-paid]').forEach(b=>b.onclick=()=>{const it=JSON.parse(b.dataset.paid); state.paid.push({kind:it.kind,id:it.id,dateISO:it.dateISO}); save(); render();});
 
-  // Afford check
   const afford=section('Can I afford this?',`
    <div class="grid cols-3"><div><label>Amount</label><input id="aff_amt" type="number" step="0.01" placeholder="e.g. 49.99"></div>
    <div><label>Date</label><input id="aff_date" type="date" value="${iso(new Date())}"></div>
@@ -66,7 +63,7 @@ function renderHome(){
   afford.querySelector('#aff_go').onclick=()=>{const amt=+afford.querySelector('#aff_amt').value||0;const left=live;const msg=afford.querySelector('#aff_msg'); if(amt<=0){msg.textContent='Enter a real amount.';return;} msg.textContent=(left-amt>=0)?`Yep. You’ll have ${money(left-amt)} left.`:`Careful — you’re about to fuck around and find out (${money(left-amt)}).`;};
 }
 
-// ---------- PLANNER (12 weeks simple projection) ----------
+// ---------- PLANNER (12-week projection) ----------
 function renderPlanner(){
   const rows=[]; const weeklyNet=computeWeekPay(state.payRules,state.hours).net||0;
   const must=(state.bills||[]).reduce((s,b)=>s+(+b.amount||0)/4.345,0)+(state.loans||[]).reduce((s,l)=>s+(+l.minimumPayment||0)/4.345,0);
@@ -122,7 +119,7 @@ function renderBills(){
   s.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const id=b.dataset.edit;const r=state.bills.find(x=>x.id==id);const n=prompt('Name',r.name)||r.name;const a=+prompt('Amount',r.amount)||r.amount;const d=+prompt('Due day',r.dueDay)||r.dueDay;Object.assign(r,{name:n,amount:a,dueDay:d});save();render();});
 }
 
-// ---------- EVENTS (one-time / overdue) ----------
+// ---------- EVENTS ----------
 function renderEvents(){
   const rows=(state.events||[]).sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<tr data-id="${e.id}"><td>${e.date}</td><td>${e.name}</td><td>${money(+e.amount)}</td><td class="row"><button data-edit="${e.id}" class="button">Edit</button><button data-del="${e.id}" class="button">Delete</button></td></tr>`).join('');
   const today=iso(new Date());
@@ -136,7 +133,7 @@ function renderEvents(){
   s.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const id=b.dataset.edit;const r=state.events.find(x=>x.id==id);const n=prompt('Name',r.name)||r.name;const a=+prompt('Amount',r.amount)||r.amount;const d=prompt('Date (YYYY-MM-DD)',r.date)||r.date;Object.assign(r,{name:n,amount:a,date:d});save();render();});
 }
 
-// ---------- ENVELOPES (weekly buckets) ----------
+// ---------- ENVELOPES ----------
 function renderEnvelopes(){
   const rows=(state.envelopes||[]).map(e=>`<tr data-id="${e.id}"><td>${e.name}</td><td>${money(+e.weeklyTarget)}</td><td class="row"><button data-edit="${e.id}" class="button">Edit</button><button data-del="${e.id}" class="button">Delete</button></td></tr>`).join('');
   const s=section('Where It Goes (weekly buckets)',`
@@ -191,4 +188,7 @@ render();
 TABS.addEventListener('click',e=>{const b=e.target.closest('.tab'); if(!b)return; document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); render();});
 
 // First-run wizard
-if(!state.ui.onboarded && wizard){ import('./wizard.js?v=15').then(m=>m.showWizard(state,save,render)).catch(e=>console.error('wizard',e)); }
+if(!state.ui.onboarded && wizard){ import('./wizard.js?v=15.1').then(m=>m.showWizard(state,save,render)).catch(e=>console.error('wizard',e)); }
+
+// Debug: quick console marker so we can verify the right build loaded
+console.info('YDB app.js version','15.1');
