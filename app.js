@@ -117,7 +117,7 @@ function renderFeedback(){
   const FEEDBACK_ENDPOINT =
     "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
 
-  const ver = '15.3';
+  const ver = '15.5';
   const s = section('Feedback', `
     <div class="feedback">
       <div class="grid cols-3">
