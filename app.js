@@ -1,5 +1,5 @@
-// Your Damn Budget v15.8 — fix: safe Paid buttons (no inline JSON), full views
-console.info('YDB app.js','15.8');
+// Your Damn Budget v15.8.3 — treat opaque CORS responses as success (feedback)
+console.info('YDB app.js','15.8.3');
 
 const app = document.getElementById('app');
 const TABS = document.querySelector('nav.tabs');
@@ -41,12 +41,12 @@ function section(h,b=''){ const s=document.createElement('section'); s.className
 function toast(txt,ok=true){ const t=document.createElement('div'); Object.assign(t.style,{position:'fixed',left:'50%',bottom:'20px',transform:'translateX(-50%)',background:ok?'#0ea5a8':'#ef4444',color:ok?'#012a2c':'#fff',padding:'10px 14px',borderRadius:'10px',zIndex:100,fontWeight:'700'}); t.textContent=txt; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
 
 // ---------- HOME ----------
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
 function renderHome(){
   const {start,end}=boundsOfPayPeriod(new Date(), S.user.paydayWeekday);
   const net=weeklyNet().net;
   const cashThisWeek = (+S.user.bankBalance||0) + net;
 
-  // gather unpaid items inside the pay period
   const items=[];
   const paidKey=p=>`${p.kind}:${p.id}:${p.dateISO}`;
   const paidSet=new Set(S.paid.map(p=>paidKey(p)));
@@ -96,7 +96,6 @@ function renderHome(){
   `);
   app.appendChild(k);
 
-  // build table with SAFE data-attrs (no JSON in HTML)
   const rows = items.map(it=>`
     <tr>
       <td>${it.dateISO}</td>
@@ -136,8 +135,6 @@ function renderHome(){
     msg.textContent = (left-amt>=0) ? `Yep. You’ll have ${money(left-amt)} left.` : `Careful — you’re about to fuck around and find out (${money(left-amt)}).`;
   };
 }
-
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
 
 // ---------- PLANNER ----------
 function renderPlanner(){
@@ -340,10 +337,10 @@ function renderDonate(){
   `));
 }
 
-// ---------- FEEDBACK (text/plain to avoid preflight) ----------
+// ---------- FEEDBACK (handle opaque success) ----------
 function renderFeedback(){
   const FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
-  const ver='15.8';
+  const ver='15.8.3';
   const s=section('Feedback',`
     <div class="feedback">
       <label>Type</label>
@@ -358,22 +355,34 @@ function renderFeedback(){
   `);
   app.appendChild(s);
 
+  let sending = false;
   s.querySelector('#fb_send').onclick=async()=>{
+    if(sending) return;
     const type=s.querySelector('#fb_type').value;
     const msg =s.querySelector('#fb_msg').value.trim();
     const anon=s.querySelector('#fb_anon').checked;
     const include=s.querySelector('#fb_include').checked && !anon;
     if(!msg){toast('Say at least one sentence.',false);return;}
     const meta = include ? `\n---\nApp: YDB v${ver}\nUA: ${navigator.userAgent}` : `\n---\nApp: YDB v${ver}`;
+    const payload = JSON.stringify({type,msg,name: anon?'-':'-', email: anon?'-':'-', meta});
+
+    sending = true;
     try{
       const res = await fetch(FEEDBACK_ENDPOINT,{
         method:'POST',
         headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({type,msg,name: anon?'-':'-', email: anon?'-':'-', meta})
+        body: payload
       });
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      toast('Thanks for speaking your damn mind 💬');
+
+      // Treat opaque (status 0) as success because Apps Script often
+      // doesn’t include CORS headers; the request still executes.
+      if (res.type === 'opaque' || res.status === 0 || res.ok) {
+        toast('Thanks for speaking your damn mind 💬');
+      } else {
+        throw new Error('HTTP '+res.status);
+      }
     }catch(err){ console.error(err); toast('Could not send. Try again later.',false); }
+    finally{ sending = false; }
   };
 
   s.querySelector('#fb_copy').onclick=async()=>{
