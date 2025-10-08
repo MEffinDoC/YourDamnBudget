@@ -1,5 +1,5 @@
-// Your Damn Budget v15.8.4 — feedback uses no-cors + beacon fallback
-console.info('YDB app.js', '15.8.4');
+// Your Damn Budget v15.8.5 — optimistic feedback send (no scary error)
+console.info('YDB app.js', '15.8.5');
 
 const app = document.getElementById('app');
 const TABS = document.querySelector('nav.tabs');
@@ -46,7 +46,6 @@ function renderHome(){
   const net=weeklyNet().net;
   const cashThisWeek = (+S.user.bankBalance||0) + net;
 
-  // collect due items in period
   const items=[];
   const paidKey=p=>`${p.kind}:${p.id}:${p.dateISO}`;
   const paidSet=new Set(S.paid.map(p=>paidKey(p)));
@@ -337,10 +336,10 @@ function renderDonate(){
   `));
 }
 
-// ---------- FEEDBACK (no-cors + beacon) ----------
+// ---------- FEEDBACK (optimistic) ----------
 function renderFeedback(){
   const FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
-  const ver='15.8.4';
+  const ver='15.8.5';
   const s=section('Feedback',`
     <div class="feedback">
       <label>Type</label>
@@ -369,24 +368,13 @@ function renderFeedback(){
     const blob = new Blob([JSON.stringify(payloadObj)], {type:'text/plain'});
 
     sending=true;
+    // Show success immediately (optimistic), then fire and forget
+    toast('Thanks for speaking your damn mind 💬');
     try{
-      // Preferred: no-cors fetch (will resolve with opaque response)
-      await fetch(FEEDBACK_ENDPOINT,{
-        method:'POST',
-        mode:'no-cors',
-        body: blob,
-        keepalive:true
-      });
-      toast('Thanks for speaking your damn mind 💬');
-    }catch(err){
-      // Fallback: sendBeacon
-      try{
-        const ok = navigator.sendBeacon && navigator.sendBeacon(FEEDBACK_ENDPOINT, blob);
-        if(ok){ toast('Thanks for speaking your damn mind 💬'); }
-        else { throw new Error('Beacon failed'); }
-      }catch(e){
-        console.error('feedback error', err, e);
-        toast('Could not send. Try again later.', false);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(FEEDBACK_ENDPOINT, blob);
+      } else {
+        fetch(FEEDBACK_ENDPOINT,{ method:'POST', mode:'no-cors', body: blob, keepalive:true }).catch(()=>{});
       }
     }finally{ sending=false; }
   };
@@ -449,18 +437,7 @@ function safeCall(name,fn){
 function render(){
   app.innerHTML='';
   const v=document.querySelector('nav .tab.active')?.dataset.view||'home';
-  const map={
-    home:renderHome,
-    planner:renderPlanner,
-    timesheet:renderTimesheet,
-    bills:renderBills,
-    events:renderEvents,
-    envelopes:renderEnvelopes,
-    loans:renderLoans,
-    donate:renderDonate,
-    feedback:renderFeedback,
-    settings:renderSettings
-  };
+  const map={home:renderHome,planner:renderPlanner,timesheet:renderTimesheet,bills:renderBills,events:renderEvents,envelopes:renderEnvelopes,loans:renderLoans,donate:renderDonate,feedback:renderFeedback,settings:renderSettings};
   safeCall(v,map[v]);
 }
 render();
