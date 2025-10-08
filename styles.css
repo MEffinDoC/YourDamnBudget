@@ -15,16 +15,19 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-
 .card{background:var(--card);border-radius:16px;padding:12px 14px;margin:12px 0;border:1px solid #17304e}
 h2{margin:0 0 8px 0}
 
-/* Button styles (apply to <button> and <a class="button">) */
+/* Buttons (works for <button> and <a class="button">) */
 button,.button{
-  display:inline-flex; align-items:center; justify-content:center; gap:8px;
-  border:1px solid #17304e; border-radius:10px; padding:10px 14px;
-  font-weight:700; cursor:pointer; background:#0e2136; color:var(--fg);
-  text-decoration:none; /* ensure anchors aren’t underlined */
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid #17304e;border-radius:10px;padding:10px 14px;
+  font-weight:700;cursor:pointer;background:#0e2136;color:var(--fg);
+  text-decoration:none;
 }
 .button.primary,button.primary{background:var(--accent);border:0;color:#002a2d}
-/* Keep visited/linked anchors looking like buttons */
-a.button:link, a.button:visited{color:inherit}
+
+/* Kill underline on anchors in all states (beats a:any-link) */
+a.button, a.button:link, a.button:visited, a.button:hover, a.button:focus, a.button:active{
+  text-decoration:none !important; color:inherit;
+}
 
 /* Inputs */
 input,select,textarea{width:100%;background:#0e2136;color:var(--fg);border:1px solid #17304e;border-radius:10px;padding:10px}
