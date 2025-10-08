@@ -15,7 +15,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-
 .card{background:var(--card);border-radius:16px;padding:12px 14px;margin:12px 0;border:1px solid #17304e}
 h2{margin:0 0 8px 0}
 
-/* Buttons (button + anchor) */
+/* Buttons */
 button,.button{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   border:1px solid #17304e;border-radius:10px;padding:10px 14px;
@@ -27,6 +27,7 @@ a.button, a.button:link, a.button:visited, a.button:hover, a.button:focus, a.but
   text-decoration:none !important; color:inherit;
 }
 
+/* Inputs */
 input,select,textarea{width:100%;background:#0e2136;color:var(--fg);border:1px solid #17304e;border-radius:10px;padding:10px}
 label{display:block;margin:8px 0 4px;color:#cfe1f6}
 
@@ -56,3 +57,26 @@ thead th{position:sticky;top:0;background:#0e2136}
 
 .negative{color:#f87171}.positive{color:#34d399}
 .badge{font-size:11px;color:#9fb2c7;border:1px solid #17304e;border-radius:8px;padding:2px 6px;margin-left:6px}
+
+/* --- Wizard modal --- */
+.wiz-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.5);
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:20px 12px;
+}
+.wiz{
+  width:min(720px,100%);
+  background:var(--card);
+  border:1px solid #17304e;
+  border-radius:16px;
+  margin-top:12px;
+  padding:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.wiz h2{margin:0 0 8px}
+.wiz .wiz-body{margin-top:6px}
+.wiz .wiz-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.wiz .wiz-steps{font-size:12px;color:#9fb2c7;margin-top:6px;text-align:right}
+.wiz .hint{font-size:12px;color:#9fb2c7;margin-top:4px}
+.wiz .grid + .grid{margin-top:8px}
