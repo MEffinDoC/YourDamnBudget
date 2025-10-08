@@ -21,3 +21,15 @@ button,.button{background:#0e2136;color:var(--ink);border:1px solid #17304e;padd
 .overlay.hidden{display:none}.panel{background:linear-gradient(180deg,#0f2238,#0d1e30);border:1px solid #1f3a57;box-shadow:0 18px 44px rgba(0,0,0,.45),0 0 0 1px rgba(14,33,54,.6) inset;border-radius:18px;padding:16px;width:min(740px,94vw);max-height:86vh;overflow:auto}
 .progress{height:10px;background:#0e2136;border:1px solid #17304e;border-radius:999px;overflow:hidden;margin-bottom:10px}.progress>div{height:100%;background:linear-gradient(90deg,#0ea5a8,#5eead4)}
 .footer .version{text-align:center;opacity:.8;color:#94a3b8;margin-top:6px}
+
+/* === Donate buttons (no underlines, branded tiles) === */
+.donate-grid{gap:10px}
+.donate-grid a.button{
+  text-decoration:none !important;
+  display:flex; gap:10px; align-items:center; justify-content:center;
+  border:0; outline:0;
+}
+.donate-grid a.button svg{flex:0 0 22px}
+.donate-grid a.button:active{transform:translateY(1px); opacity:.9}
+.btn-paypal{background:#1e40af; color:#fff}
+.btn-cashapp{background:#00c244; color:#062b10}
