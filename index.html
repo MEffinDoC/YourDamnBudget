@@ -1,12 +1,15 @@
 <!doctype html><html lang="en"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>Your Damn Budget</title><meta name="theme-color" content="#0b2034"/>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Your Damn Budget</title>
+<meta name="theme-color" content="#0b2034"/>
 <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
 <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=15.3">
 </head><body>
 <header class="topbar">
-  <img src="/YourDamnBudget/icons/flat-192.png" class="brand" alt=""><div class="title">Your Damn Budget</div>
+  <img src="/YourDamnBudget/icons/flat-192.png" class="brand" alt="">
+  <div class="title">Your Damn Budget</div>
   <div id="ad-top" class="ad-slot"><div class="house">Top banner</div></div>
   <nav class="tabs">
     <button class="tab active" data-view="home">Home<br><span>Reality</span></button>
@@ -21,9 +24,22 @@
     <button class="tab" data-view="settings">Settings<br><span>tweaks</span></button>
   </nav>
 </header>
+
 <main id="app" class="container"></main>
 <div id="wizard" class="overlay hidden" role="dialog" aria-modal="true"></div>
-<footer class="footer"><div id="ad-bottom" class="ad-slot"><div class="house">Bottom banner</div></div><div class="version">YDB v15.3</div></footer>
-<script>if('serviceWorker'in navigator){addEventListener('load',()=>navigator.serviceWorker.register('/YourDamnBudget/sw.js',{scope:'/YourDamnBudget/'}));}</script>
-<script type="module" src="/YourDamnBudget/app.js?v=15.3"></script>
+
+<footer class="footer">
+  <div id="ad-bottom" class="ad-slot"><div class="house">Bottom banner</div></div>
+  <div class="version">YDB v15.5</div>
+</footer>
+
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register(
+    '/YourDamnBudget/sw.js',
+    { scope: '/YourDamnBudget/' }
+  ));
+}
+</script>
+<script type="module" src="/YourDamnBudget/app.js?v=15.5"></script>
 </body></html>
