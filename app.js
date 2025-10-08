@@ -1,5 +1,5 @@
-// Your Damn Budget v15.7 — full views + safe router + fixed feedback POST
-console.info('YDB app.js','15.7');
+// Your Damn Budget v15.8 — fix: safe Paid buttons (no inline JSON), full views
+console.info('YDB app.js','15.8');
 
 const app = document.getElementById('app');
 const TABS = document.querySelector('nav.tabs');
@@ -17,30 +17,26 @@ S.events ??= [];        // {id,name,amount,dateISO}
 S.envelopes ??= [];     // {id,name,weeklyTarget}
 S.paid ??= [];          // {kind,id,dateISO}
 
+function save(){ localStorage.setItem(storeKey, JSON.stringify(S)); }
 save();
 
-// helpers
-function save(){ localStorage.setItem(storeKey, JSON.stringify(S)); }
 const money = n => (isNaN(+n)?0:+n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 const iso = d => new Date(d).toISOString().slice(0,10);
 function boundsOfPayPeriod(dt=new Date(), paydayDow=(S.user.paydayWeekday??5)){
-  const d=new Date(dt); const day=d.getDay(); const diff=(day<=paydayDow?paydayDow-day:7-(day-paydayDow));
+  const d=new Date(dt); const day=d.getDay();
+  const diff=(day<=paydayDow?paydayDow-day:7-(day-paydayDow));
   const end=new Date(d); end.setDate(d.getDate()+diff); end.setHours(0,0,0,0);
   const start=new Date(end); start.setDate(end.getDate()-7);
   return {start,end};
 }
 function uid(){ return Math.random().toString(36).slice(2,9); }
-
-// weekly net estimate
 function weeklyNet(){
-  const base = (+S.hours.regular||0) * (+S.pay.baseHourly||0);
-  const ot   = (+S.hours.ot||0) * (+S.pay.baseHourly||0) * (+S.pay.otMultiplier||1.5);
-  const gross = base + ot;
-  const net = gross * (1 - (+S.pay.withholding||0));
+  const base=(+S.hours.regular||0)*(+S.pay.baseHourly||0);
+  const ot  =(+S.hours.ot||0)*(+S.pay.baseHourly||0)*(+S.pay.otMultiplier||1.5);
+  const gross=base+ot, net=gross*(1-(+S.pay.withholding||0));
   return {gross,net};
 }
 
-// ---------- Components ----------
 function section(h,b=''){ const s=document.createElement('section'); s.className='card'; s.innerHTML=(h?`<h2>${h}</h2>`:'')+b; return s; }
 function toast(txt,ok=true){ const t=document.createElement('div'); Object.assign(t.style,{position:'fixed',left:'50%',bottom:'20px',transform:'translateX(-50%)',background:ok?'#0ea5a8':'#ef4444',color:ok?'#012a2c':'#fff',padding:'10px 14px',borderRadius:'10px',zIndex:100,fontWeight:'700'}); t.textContent=txt; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
 
@@ -50,19 +46,44 @@ function renderHome(){
   const net=weeklyNet().net;
   const cashThisWeek = (+S.user.bankBalance||0) + net;
 
-  // upcoming items
-  const items=[]; const paidKey=p=>`${p.kind}:${p.id}:${p.dateISO}`; const paidSet=new Set(S.paid.map(p=>paidKey(p)));
-  (S.bills||[]).forEach(b=>{ for(let m=0;m<2;m++){ const d=new Date(start.getFullYear(),start.getMonth()+m,b.dueDay); if(d>=start && d<end){ const it={kind:'bill',id:b.id,name:b.name,dateISO:iso(d),amount:+b.amount}; if(!paidSet.has(paidKey(it))) items.push(it); } } });
-  (S.loans||[]).forEach(l=>{ for(let m=0;m<2;m++){ const d=new Date(start.getFullYear(),start.getMonth()+m,l.dueDay); if(d>=start && d<end){ const it={kind:'loan',id:l.id,name:l.name,dateISO:iso(d),amount:+l.minimumPayment}; if(!paidSet.has(paidKey(it))) items.push(it); } } });
-  (S.events||[]).forEach(e=>{ const d=new Date(e.dateISO); if(d>=start && d<end){ const it={kind:'event',id:e.id,name:e.name,dateISO:iso(d),amount:+e.amount}; if(!paidSet.has(paidKey(it))) items.push(it); } });
+  // gather unpaid items inside the pay period
+  const items=[];
+  const paidKey=p=>`${p.kind}:${p.id}:${p.dateISO}`;
+  const paidSet=new Set(S.paid.map(p=>paidKey(p)));
+
+  (S.bills||[]).forEach(b=>{
+    for(let m=0;m<2;m++){
+      const d=new Date(start.getFullYear(),start.getMonth()+m,b.dueDay);
+      if(d>=start && d<end){
+        const it={kind:'bill',id:b.id,name:b.name,dateISO:iso(d),amount:+b.amount};
+        if(!paidSet.has(paidKey(it))) items.push(it);
+      }
+    }
+  });
+  (S.loans||[]).forEach(l=>{
+    for(let m=0;m<2;m++){
+      const d=new Date(start.getFullYear(),start.getMonth()+m,l.dueDay);
+      if(d>=start && d<end){
+        const it={kind:'loan',id:l.id,name:l.name,dateISO:iso(d),amount:+l.minimumPayment};
+        if(!paidSet.has(paidKey(it))) items.push(it);
+      }
+    }
+  });
+  (S.events||[]).forEach(e=>{
+    const d=new Date(e.dateISO);
+    if(d>=start && d<end){
+      const it={kind:'event',id:e.id,name:e.name,dateISO:iso(d),amount:+e.amount};
+      if(!paidSet.has(paidKey(it))) items.push(it);
+    }
+  });
 
   items.sort((a,b)=>a.dateISO.localeCompare(b.dateISO)||a.name.localeCompare(b.name));
 
   const vars=(S.envelopes||[]).reduce((s,e)=>s+(+e.weeklyTarget||0),0);
-  const faf = +S.user.faFundsPerWeek||0;
+  const faf=+S.user.faFundsPerWeek||0;
   const after = cashThisWeek - vars - faf - items.reduce((s,x)=>s+(+x.amount||0),0);
 
-  const k = section('Weekly Damage Report', `
+  const k=section('Weekly Damage Report', `
     <div class="grid cols-3">
       <div><div class="kpi-label">Cash This Week</div><div class="kpi-value">${money(cashThisWeek)}</div>
         <div class="help">Bank: ${money(S.user.bankBalance||0)} + Est. net paycheck: ${money(net)}</div>
@@ -75,24 +96,32 @@ function renderHome(){
   `);
   app.appendChild(k);
 
-  const up = section('Due this pay period', `
+  // build table with SAFE data-attrs (no JSON in HTML)
+  const rows = items.map(it=>`
+    <tr>
+      <td>${it.dateISO}</td>
+      <td>${escapeHtml(it.name)} <span class="badge">${it.kind}</span></td>
+      <td>${money(it.amount)}</td>
+      <td><button class="button paid-btn"
+            data-kind="${it.kind}" data-id="${it.id}" data-date="${it.dateISO}">Paid ✔</button></td>
+    </tr>`).join('');
+
+  const up=section('Due this pay period', `
     <div class="table-scroll"><table>
       <thead><tr><th>Date</th><th>What</th><th>$</th><th></th></tr></thead>
-      <tbody>
-      ${items.length?items.map(it=>`
-        <tr>
-          <td>${it.dateISO}</td>
-          <td>${it.name} <span class="badge">${it.kind}</span></td>
-          <td>${money(it.amount)}</td>
-          <td><button class="button" data-paid='${JSON.stringify(it)}'>Paid ✔</button></td>
-        </tr>`).join(''):`<tr><td colspan="4" class="help">Nothing else due before ${iso(end)}.</td></tr>`}
-      </tbody>
+      <tbody>${rows || `<tr><td colspan="4" class="help">Nothing else due before ${iso(end)}.</td></tr>`}</tbody>
     </table></div>
   `);
   app.appendChild(up);
-  up.querySelectorAll('[data-paid]').forEach(b=>b.onclick=()=>{ const it=JSON.parse(b.dataset.paid); S.paid.push({kind:it.kind,id:it.id,dateISO:it.dateISO}); save(); render(); });
 
-  const afford = section('Can I afford this?', `
+  up.querySelectorAll('.paid-btn').forEach(b=>{
+    b.onclick=()=>{
+      const it={kind:b.dataset.kind,id:b.dataset.id,dateISO:b.dataset.date};
+      S.paid.push(it); save(); render();
+    };
+  });
+
+  const afford=section('Can I afford this?', `
     <div class="grid cols-3">
       <div><label>Amount</label><input id="aff_amt" type="number" step="0.01" placeholder="e.g., 49.99"></div>
       <div><label>Date</label><input id="aff_date" type="date" value="${iso(new Date())}"></div>
@@ -108,7 +137,9 @@ function renderHome(){
   };
 }
 
-// ---------- PLANNER (simple 12-week roll-up) ----------
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
+
+// ---------- PLANNER ----------
 function renderPlanner(){
   const weeks=12, arr=[]; const wk=weeklyNet().net;
   for(let i=0;i<weeks;i++){ arr.push({week:i+1, income:wk, buckets:(S.envelopes||[]).reduce((s,e)=>s+(+e.weeklyTarget||0),0), faf:S.user.faFundsPerWeek||0}); }
@@ -194,7 +225,7 @@ function renderBills(){
   app.appendChild(wrap);
   const tbody=wrap.querySelector('#b_body');
   function draw(){ tbody.innerHTML=(S.bills||[]).map(b=>`<tr>
-    <td>${b.name}</td><td>${money(b.amount)}</td><td>${b.dueDay}</td>
+    <td>${escapeHtml(b.name)}</td><td>${money(b.amount)}</td><td>${b.dueDay}</td>
     <td><button data-del="${b.id}" class="button">Delete</button></td>
   </tr>`).join('') || `<tr><td colspan="4" class="help">No bills yet.</td></tr>`; }
   draw();
@@ -209,7 +240,7 @@ function renderBills(){
   };
 }
 
-// ---------- EVENTS (one-time / overdue) ----------
+// ---------- EVENTS ----------
 function renderEvents(){
   const wrap=section('Catch-Up Shit',`
     <div class="grid cols-3">
@@ -226,7 +257,7 @@ function renderEvents(){
   app.appendChild(wrap);
   const tbody=wrap.querySelector('#e_body');
   function draw(){ tbody.innerHTML=(S.events||[]).sort((a,b)=>a.dateISO.localeCompare(b.dateISO)).map(x=>`<tr>
-    <td>${x.dateISO}</td><td>${x.name}</td><td>${money(x.amount)}</td>
+    <td>${x.dateISO}</td><td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td>
     <td><button class="button" data-del="${x.id}">Delete</button></td>
   </tr>`).join('') || `<tr><td colspan="4" class="help">No one-offs right now.</td></tr>`; }
   draw();
@@ -256,7 +287,7 @@ function renderEnvelopes(){
   app.appendChild(wrap);
   const tbody=wrap.querySelector('#env_body'), total=wrap.querySelector('#env_total');
   function draw(){ tbody.innerHTML=(S.envelopes||[]).map(x=>`<tr>
-    <td>${x.name}</td><td>${money(x.weeklyTarget)}</td><td><button class="button" data-del="${x.id}">Delete</button></td>
+    <td>${escapeHtml(x.name)}</td><td>${money(x.weeklyTarget)}</td><td><button class="button" data-del="${x.id}">Delete</button></td>
   </tr>`).join('') || `<tr><td colspan="3" class="help">Add your weekly buckets.</td></tr>`;
     total.textContent = money((S.envelopes||[]).reduce((s,x)=>s+(+x.weeklyTarget||0),0));
   }
@@ -286,7 +317,7 @@ function renderLoans(){
   app.appendChild(wrap);
   const tbody=wrap.querySelector('#l_body');
   function draw(){ tbody.innerHTML=(S.loans||[]).map(l=>`<tr>
-    <td>${l.name}</td><td>${money(l.minimumPayment)}</td><td>${l.dueDay}</td>
+    <td>${escapeHtml(l.name)}</td><td>${money(l.minimumPayment)}</td><td>${l.dueDay}</td>
     <td><button class="button" data-del="${l.id}">Delete</button></td>
   </tr>`).join('') || `<tr><td colspan="4" class="help">No debts logged yet.</td></tr>`; }
   draw();
@@ -309,10 +340,10 @@ function renderDonate(){
   `));
 }
 
-// ---------- FEEDBACK (fixed: text/plain POST = no preflight) ----------
+// ---------- FEEDBACK (text/plain to avoid preflight) ----------
 function renderFeedback(){
   const FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
-  const ver='15.7';
+  const ver='15.8';
   const s=section('Feedback',`
     <div class="feedback">
       <label>Type</label>
@@ -337,16 +368,12 @@ function renderFeedback(){
     try{
       const res = await fetch(FEEDBACK_ENDPOINT,{
         method:'POST',
-        // IMPORTANT: text/plain avoids CORS preflight with Apps Script
         headers:{'Content-Type':'text/plain'},
         body: JSON.stringify({type,msg,name: anon?'-':'-', email: anon?'-':'-', meta})
       });
       if(!res.ok) throw new Error('HTTP '+res.status);
-      // Apps Script returns JSON; we won't parse to avoid any mode quirks.
       toast('Thanks for speaking your damn mind 💬');
-    }catch(err){
-      console.error(err); toast('Could not send. Try again later.',false);
-    }
+    }catch(err){ console.error(err); toast('Could not send. Try again later.',false); }
   };
 
   s.querySelector('#fb_copy').onclick=async()=>{
@@ -400,19 +427,10 @@ function renderSettings(){
 }
 
 // ---------- Safe Router ----------
-function safeCall(name, fn){
-  try {
-    if (typeof fn !== 'function') {
-      app.appendChild(section('Oops', `<div class="help">View <b>${name}</b> is missing.</div>`));
-      return;
-    }
-    fn();
-  } catch (err) {
-    app.appendChild(section('Something broke', `<pre style="white-space:pre-wrap">${err?.message||err}</pre>`));
-    console.error('view error', name, err);
-  }
+function safeCall(name,fn){
+  try{ if(typeof fn!=='function'){ app.appendChild(section('Oops',`<div class="help">View <b>${name}</b> is missing.</div>`)); return; } fn(); }
+  catch(err){ app.appendChild(section('Something broke', `<pre style="white-space:pre-wrap">${err?.message||err}</pre>`)); console.error('view error',name,err); }
 }
-
 function render(){
   app.innerHTML='';
   const v=document.querySelector('nav .tab.active')?.dataset.view||'home';
@@ -420,7 +438,6 @@ function render(){
   safeCall(v,map[v]);
 }
 render();
-
 TABS.addEventListener('click',e=>{
   const b=e.target.closest('.tab'); if(!b) return;
   document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active'));
