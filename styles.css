@@ -15,7 +15,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-
 .card{background:var(--card);border-radius:16px;padding:12px 14px;margin:12px 0;border:1px solid #17304e}
 h2{margin:0 0 8px 0}
 
-/* Buttons (works for <button> and <a class="button">) */
+/* Buttons (button + anchor) */
 button,.button{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   border:1px solid #17304e;border-radius:10px;padding:10px 14px;
@@ -23,13 +23,10 @@ button,.button{
   text-decoration:none;
 }
 .button.primary,button.primary{background:var(--accent);border:0;color:#002a2d}
-
-/* Kill underline on anchors in all states (beats a:any-link) */
 a.button, a.button:link, a.button:visited, a.button:hover, a.button:focus, a.button:active{
   text-decoration:none !important; color:inherit;
 }
 
-/* Inputs */
 input,select,textarea{width:100%;background:#0e2136;color:var(--fg);border:1px solid #17304e;border-radius:10px;padding:10px}
 label{display:block;margin:8px 0 4px;color:#cfe1f6}
 
@@ -53,7 +50,6 @@ thead th{position:sticky;top:0;background:#0e2136}
 .ad-slot{height:56px;display:flex;align-items:center;justify-content:center;border:1px dashed #17304e;border-radius:12px;margin-top:8px;background:#0e2136}
 .house{font-size:12px;color:#cbd5e1;opacity:.9}
 
-/* feedback polish */
 .feedback textarea{min-height:140px;resize:vertical}
 .feedback input[type="checkbox"]{width:20px;height:20px;accent-color:var(--accent)}
 .feedback .row{align-items:center;gap:10px}
