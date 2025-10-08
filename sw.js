@@ -1,8 +1,8 @@
-// YDB sw.js v15g
-const SCOPE='/YourDamnBudget/', CACHE='ydb-v15g';
+// YDB sw.js v15h
+const SCOPE='/YourDamnBudget/', CACHE='ydb-v15h';
 const ASSETS=[
   `${SCOPE}`,`${SCOPE}index.html`,
-  `${SCOPE}styles.css?v=15.7`,
+  `${SCOPE}styles.css?v=15.8.1`,
   `${SCOPE}app.js?v=15.8`,
   `${SCOPE}engine.js`,
   `${SCOPE}wizard.js?v=15.2`,
