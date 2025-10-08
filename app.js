@@ -1,5 +1,5 @@
-// Your Damn Budget v15.8.5 — optimistic feedback send (no scary error)
-console.info('YDB app.js', '15.8.5');
+// Your Damn Budget v15.8.6 — feedback textarea clears after send
+console.info('YDB app.js', '15.8.6');
 
 const app = document.getElementById('app');
 const TABS = document.querySelector('nav.tabs');
@@ -336,10 +336,10 @@ function renderDonate(){
   `));
 }
 
-// ---------- FEEDBACK (optimistic) ----------
+// ---------- FEEDBACK (optimistic + clear textbox) ----------
 function renderFeedback(){
   const FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
-  const ver='15.8.5';
+  const ver='15.8.6';
   const s=section('Feedback',`
     <div class="feedback">
       <label>Type</label>
@@ -358,7 +358,8 @@ function renderFeedback(){
   s.querySelector('#fb_send').onclick=async()=>{
     if(sending) return;
     const type=s.querySelector('#fb_type').value;
-    const msg =s.querySelector('#fb_msg').value.trim();
+    const textarea=s.querySelector('#fb_msg');
+    const msg =textarea.value.trim();
     const anon=s.querySelector('#fb_anon').checked;
     const include=s.querySelector('#fb_include').checked && !anon;
     if(!msg){toast('Say at least one sentence.',false);return;}
@@ -368,8 +369,10 @@ function renderFeedback(){
     const blob = new Blob([JSON.stringify(payloadObj)], {type:'text/plain'});
 
     sending=true;
-    // Show success immediately (optimistic), then fire and forget
+    // Optimistic success
     toast('Thanks for speaking your damn mind 💬');
+    // Clear textbox right away
+    textarea.value = '';
     try{
       if (navigator.sendBeacon) {
         navigator.sendBeacon(FEEDBACK_ENDPOINT, blob);
