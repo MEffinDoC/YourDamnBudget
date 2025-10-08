@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
   <meta name="theme-color" content="#081826">
 
-  <!-- Styles (using the last good version) -->
-  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=15.8.2">
+  <!-- Styles -->
+  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=15.9.0">
 </head>
 <body>
   <header class="topbar">
@@ -39,10 +39,14 @@
     <main id="app" class="container"></main>
 
     <div class="card ad-slot">Bottom banner</div>
-    <div class="footer">YDB v15.8.5</div>
+    <div class="footer">YDB v15.9.0</div>
   </div>
 
-  <script type="module" src="/YourDamnBudget/app.js?v=15.8.5"></script>
+  <!-- App -->
+  <script type="module" src="/YourDamnBudget/wizard.js?v=15.9.0"></script>
+  <script type="module" src="/YourDamnBudget/app.js?v=15.9.0"></script>
+
+  <!-- Service Worker register -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/YourDamnBudget/sw.js').catch(()=>{});
