@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Your Damn Budget</title>
 
-  <!-- Icons & PWA -->
+  <!-- PWA / Icons -->
   <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest">
   <link rel="icon" sizes="192x192" href="/YourDamnBudget/icons/flat-192.png">
   <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
-
-  <!-- Styles (v15.8.2) -->
-  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=15.8.2">
   <meta name="theme-color" content="#081826">
+
+  <!-- Styles (using the last good version) -->
+  <link rel="stylesheet" href="/YourDamnBudget/styles.css?v=15.8.2">
 </head>
 <body>
   <header class="topbar">
@@ -21,16 +21,14 @@
   </header>
 
   <div class="container">
-    <!-- top banner slot -->
     <div class="card ad-slot">Top banner</div>
 
-    <!-- tabs -->
     <nav class="tabs" aria-label="Sections">
       <button class="tab active" data-view="home">Home<br><span>Reality</span></button>
       <button class="tab" data-view="planner">Crystal Ball<br><span>12-week</span></button>
       <button class="tab" data-view="timesheet">Hours<br><span>Paycheck</span></button>
       <button class="tab" data-view="bills">Shit That Must Get Paid<br><span>bills & housing</span></button>
-      <button class="tab" data-view="events">Catch-Up Shit<br><span>one-offs & IOUs</span></button>
+      <button class="tab" data-view="events">Catch-Up Shit<br><span>one-offs & overdue</span></button>
       <button class="tab" data-view="envelopes">Where It Goes<br><span>buckets</span></button>
       <button class="tab" data-view="loans">Your Damn Debts<br><span>loans & IOUs</span></button>
       <button class="tab" data-view="donate">Donate<br><span>optional</span></button>
@@ -38,20 +36,13 @@
       <button class="tab" data-view="settings">Settings<br><span>tweaks</span></button>
     </nav>
 
-    <!-- main mount -->
     <main id="app" class="container"></main>
 
-    <!-- bottom banner slot -->
     <div class="card ad-slot">Bottom banner</div>
-
-    <!-- footer -->
-    <div class="footer">YDB v15.8.4</div>
+    <div class="footer">YDB v15.8.5</div>
   </div>
 
-  <!-- App -->
-  <script type="module" src="/YourDamnBudget/app.js?v=15.8.4"></script>
-
-  <!-- Service Worker register -->
+  <script type="module" src="/YourDamnBudget/app.js?v=15.8.5"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/YourDamnBudget/sw.js').catch(()=>{});
