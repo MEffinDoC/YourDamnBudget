@@ -1,9 +1,9 @@
-// YDB sw.js v15i
-const SCOPE='/YourDamnBudget/', CACHE='ydb-v15i';
+// YDB sw.js v15j
+const SCOPE='/YourDamnBudget/', CACHE='ydb-v15j';
 const ASSETS=[
   `${SCOPE}`,`${SCOPE}index.html`,
   `${SCOPE}styles.css?v=15.8.2`,
-  `${SCOPE}app.js?v=15.8`,
+  `${SCOPE}app.js?v=15.8.3`,
   `${SCOPE}engine.js`,
   `${SCOPE}wizard.js?v=15.2`,
   `${SCOPE}manifest.webmanifest`,
@@ -16,7 +16,7 @@ self.addEventListener('install', e=>{
   self.skipWaiting();
 });
 self.addEventListener('activate', e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); 
+  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
   self.clients.claim();
 });
 self.addEventListener('fetch', e=>{
