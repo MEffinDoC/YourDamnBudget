@@ -95,26 +95,19 @@ function renderHome(){
 // (same as v15.2; omitted here for brevity in this message — keep your current v15.2 sections unchanged)
 
 // ---------------- DONATE (styled tiles; no underlines) ----------------
-function renderDonate(){
+function renderDonate() {
   const s = section('Donate (optional)', `
     <div class="grid cols-2 donate-grid">
       <a class="button btn-paypal" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener" aria-label="Donate via PayPal">
-        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="11" fill="rgba(255,255,255,.2)"></circle>
-          <path d="M9 6h4.5a3.5 3.5 0 0 1 0 7H12l-.4 2.5H9.6L9 6Z" fill="white"></path>
-        </svg>
         <span style="font-weight:700">PayPal</span>
       </a>
       <a class="button btn-cashapp" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener" aria-label="Donate via Cash App">
-        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="2" y="2" width="20" height="20" rx="6" fill="rgba(0,0,0,.12)"></rect>
-          <path d="M12 6v12M8.5 9.5c0-1.7 1.5-3 3.5-3s3.5 1.3 3.5 3-1.5 2.5-3.5 3-3.5 1.3-3.5 3 1.5 3 3.5 3 3.5-1.3 3.5-3"
-                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-        </svg>
         <span style="font-weight:700">Cash App</span>
       </a>
     </div>
-    <div class="help" style="margin-top:8px">Donations never unlock features and aren’t required.</div>
+    <div class="help" style="margin-top:8px">
+      Donations are appreciated, but they never unlock features and aren’t required.
+    </div>
   `);
   app.appendChild(s);
 }
