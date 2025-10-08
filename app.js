@@ -1,5 +1,5 @@
-// Your Damn Budget v15.8.3 — treat opaque CORS responses as success (feedback)
-console.info('YDB app.js','15.8.3');
+// Your Damn Budget v15.8.4 — feedback uses no-cors + beacon fallback
+console.info('YDB app.js', '15.8.4');
 
 const app = document.getElementById('app');
 const TABS = document.querySelector('nav.tabs');
@@ -9,17 +9,17 @@ const storeKey = 'ydb:v3';
 let S = JSON.parse(localStorage.getItem(storeKey) || '{}');
 S.ui ??= { onboarded:false, lang:'en' };
 S.user ??= { paydayWeekday:5, faFundsPerWeek:50, bankBalance:0 };
-S.pay ??= { baseHourly:20, withholding:0.2, otMultiplier:1.5 };
-S.hours ??= { regular:40, ot:0 };
-S.bills ??= [];         // {id,name,amount,dueDay}
-S.loans ??= [];         // {id,name,minimumPayment,dueDay}
-S.events ??= [];        // {id,name,amount,dateISO}
-S.envelopes ??= [];     // {id,name,weeklyTarget}
-S.paid ??= [];          // {kind,id,dateISO}
-
+S.pay  ??= { baseHourly:20, withholding:0.2, otMultiplier:1.5 };
+S.hours??= { regular:40, ot:0 };
+S.bills??= [];      // {id,name,amount,dueDay}
+S.loans??= [];      // {id,name,minimumPayment,dueDay}
+S.events??= [];     // {id,name,amount,dateISO}
+S.envelopes??= [];  // {id,name,weeklyTarget}
+S.paid??= [];       // {kind,id,dateISO}
 function save(){ localStorage.setItem(storeKey, JSON.stringify(S)); }
 save();
 
+// ---------- Utils ----------
 const money = n => (isNaN(+n)?0:+n).toLocaleString(undefined,{style:'currency',currency:'USD'});
 const iso = d => new Date(d).toISOString().slice(0,10);
 function boundsOfPayPeriod(dt=new Date(), paydayDow=(S.user.paydayWeekday??5)){
@@ -30,6 +30,9 @@ function boundsOfPayPeriod(dt=new Date(), paydayDow=(S.user.paydayWeekday??5)){
   return {start,end};
 }
 function uid(){ return Math.random().toString(36).slice(2,9); }
+function toast(txt,ok=true){ const t=document.createElement('div'); Object.assign(t.style,{position:'fixed',left:'50%',bottom:'20px',transform:'translateX(-50%)',background:ok?'#0ea5a8':'#ef4444',color:ok?'#012a2c':'#fff',padding:'10px 14px',borderRadius:'10px',zIndex:100,fontWeight:'700'}); t.textContent=txt; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
+function section(h,b=''){ const s=document.createElement('section'); s.className='card'; s.innerHTML=(h?`<h2>${h}</h2>`:'')+b; return s; }
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
 function weeklyNet(){
   const base=(+S.hours.regular||0)*(+S.pay.baseHourly||0);
   const ot  =(+S.hours.ot||0)*(+S.pay.baseHourly||0)*(+S.pay.otMultiplier||1.5);
@@ -37,16 +40,13 @@ function weeklyNet(){
   return {gross,net};
 }
 
-function section(h,b=''){ const s=document.createElement('section'); s.className='card'; s.innerHTML=(h?`<h2>${h}</h2>`:'')+b; return s; }
-function toast(txt,ok=true){ const t=document.createElement('div'); Object.assign(t.style,{position:'fixed',left:'50%',bottom:'20px',transform:'translateX(-50%)',background:ok?'#0ea5a8':'#ef4444',color:ok?'#012a2c':'#fff',padding:'10px 14px',borderRadius:'10px',zIndex:100,fontWeight:'700'}); t.textContent=txt; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
-
 // ---------- HOME ----------
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
 function renderHome(){
   const {start,end}=boundsOfPayPeriod(new Date(), S.user.paydayWeekday);
   const net=weeklyNet().net;
   const cashThisWeek = (+S.user.bankBalance||0) + net;
 
+  // collect due items in period
   const items=[];
   const paidKey=p=>`${p.kind}:${p.id}:${p.dateISO}`;
   const paidSet=new Set(S.paid.map(p=>paidKey(p)));
@@ -337,10 +337,10 @@ function renderDonate(){
   `));
 }
 
-// ---------- FEEDBACK (handle opaque success) ----------
+// ---------- FEEDBACK (no-cors + beacon) ----------
 function renderFeedback(){
   const FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
-  const ver='15.8.3';
+  const ver='15.8.4';
   const s=section('Feedback',`
     <div class="feedback">
       <label>Type</label>
@@ -355,7 +355,7 @@ function renderFeedback(){
   `);
   app.appendChild(s);
 
-  let sending = false;
+  let sending=false;
   s.querySelector('#fb_send').onclick=async()=>{
     if(sending) return;
     const type=s.querySelector('#fb_type').value;
@@ -363,26 +363,32 @@ function renderFeedback(){
     const anon=s.querySelector('#fb_anon').checked;
     const include=s.querySelector('#fb_include').checked && !anon;
     if(!msg){toast('Say at least one sentence.',false);return;}
+
     const meta = include ? `\n---\nApp: YDB v${ver}\nUA: ${navigator.userAgent}` : `\n---\nApp: YDB v${ver}`;
-    const payload = JSON.stringify({type,msg,name: anon?'-':'-', email: anon?'-':'-', meta});
+    const payloadObj = {type,msg,name: anon?'-':'-', email: anon?'-':'-', meta};
+    const blob = new Blob([JSON.stringify(payloadObj)], {type:'text/plain'});
 
-    sending = true;
+    sending=true;
     try{
-      const res = await fetch(FEEDBACK_ENDPOINT,{
+      // Preferred: no-cors fetch (will resolve with opaque response)
+      await fetch(FEEDBACK_ENDPOINT,{
         method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body: payload
+        mode:'no-cors',
+        body: blob,
+        keepalive:true
       });
-
-      // Treat opaque (status 0) as success because Apps Script often
-      // doesn’t include CORS headers; the request still executes.
-      if (res.type === 'opaque' || res.status === 0 || res.ok) {
-        toast('Thanks for speaking your damn mind 💬');
-      } else {
-        throw new Error('HTTP '+res.status);
+      toast('Thanks for speaking your damn mind 💬');
+    }catch(err){
+      // Fallback: sendBeacon
+      try{
+        const ok = navigator.sendBeacon && navigator.sendBeacon(FEEDBACK_ENDPOINT, blob);
+        if(ok){ toast('Thanks for speaking your damn mind 💬'); }
+        else { throw new Error('Beacon failed'); }
+      }catch(e){
+        console.error('feedback error', err, e);
+        toast('Could not send. Try again later.', false);
       }
-    }catch(err){ console.error(err); toast('Could not send. Try again later.',false); }
-    finally{ sending = false; }
+    }finally{ sending=false; }
   };
 
   s.querySelector('#fb_copy').onclick=async()=>{
@@ -435,7 +441,7 @@ function renderSettings(){
   };
 }
 
-// ---------- Safe Router ----------
+// ---------- Router ----------
 function safeCall(name,fn){
   try{ if(typeof fn!=='function'){ app.appendChild(section('Oops',`<div class="help">View <b>${name}</b> is missing.</div>`)); return; } fn(); }
   catch(err){ app.appendChild(section('Something broke', `<pre style="white-space:pre-wrap">${err?.message||err}</pre>`)); console.error('view error',name,err); }
@@ -443,7 +449,18 @@ function safeCall(name,fn){
 function render(){
   app.innerHTML='';
   const v=document.querySelector('nav .tab.active')?.dataset.view||'home';
-  const map={home:renderHome,planner:renderPlanner,timesheet:renderTimesheet,bills:renderBills,events:renderEvents,envelopes:renderEnvelopes,loans:renderLoans,donate:renderDonate,feedback:renderFeedback,settings:renderSettings};
+  const map={
+    home:renderHome,
+    planner:renderPlanner,
+    timesheet:renderTimesheet,
+    bills:renderBills,
+    events:renderEvents,
+    envelopes:renderEnvelopes,
+    loans:renderLoans,
+    donate:renderDonate,
+    feedback:renderFeedback,
+    settings:renderSettings
+  };
   safeCall(v,map[v]);
 }
 render();
