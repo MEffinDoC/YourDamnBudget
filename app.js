@@ -220,10 +220,46 @@ function renderLoans(){
 
 // ---------------- DONATE ----------------
 function renderDonate(){
-  app.appendChild(section('Donate (optional)',`
-    <div class="grid cols-2"><a class="button" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener">PayPal</a>
-    <a class="button" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener">Cash App</a></div>
-    <div class="help" style="margin-top:6px">Donations never unlock features and aren’t required.</div>`));
+  const s = section('Donate (optional)', `
+    <div class="grid cols-2">
+      <a
+        class="button"
+        href="https://paypal.me/mdsdoc"
+        target="_blank" rel="noopener"
+        style="text-decoration:none;display:flex;gap:10px;align-items:center;justify-content:center;background:#1e40af;border:0;color:#fff"
+        aria-label="Donate via PayPal"
+      >
+        <!-- simple, non-infringing P glyph in a circle -->
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="11" fill="rgba(255,255,255,.2)"></circle>
+          <path d="M9 6h4.5a3.5 3.5 0 0 1 0 7H12l-.4 2.5H9.6L9 6Z" fill="white"></path>
+        </svg>
+        <span style="font-weight:700">PayPal</span>
+      </a>
+
+      <a
+        class="button"
+        href="https://cash.app/$mdsdoc"
+        target="_blank" rel="noopener"
+        style="text-decoration:none;display:flex;gap:10px;align-items:center;justify-content:center;background:#00c244;border:0;color:#062b10"
+        aria-label="Donate via Cash App"
+      >
+        <!-- simple $ in rounded square (brand-like, not logo) -->
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="2" y="2" width="20" height="20" rx="6" fill="rgba(0,0,0,.12)"></rect>
+          <path d="M12 6v12M8.5 9.5c0-1.7 1.5-3 3.5-3s3.5 1.3 3.5 3-1.5 2.5-3.5 3-3.5 1.3-3.5 3 1.5 3 3.5 3 3.5-1.3 3.5-3"
+                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span style="font-weight:700">Cash App</span>
+      </a>
+    </div>
+
+    <div class="help" style="margin-top:8px">
+      Donations are appreciated, but they never unlock features and aren’t required.
+    </div>
+  `);
+
+  app.appendChild(s);
 }
 
 // ---------------- SETTINGS ----------------
