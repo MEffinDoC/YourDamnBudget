@@ -112,67 +112,131 @@ function renderDonate() {
   app.appendChild(s);
 }
 
-// ---------------- FEEDBACK (new) ----------------
+// ===== Feedback (private in-app send via Google Apps Script) =====
 function renderFeedback(){
+  const FEEDBACK_ENDPOINT =
+    "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
+
   const ver = '15.3';
   const s = section('Feedback', `
     <div class="feedback">
       <div class="grid cols-3">
-        <div><label>Your name (optional)</label><input id="fb_name" placeholder="Jane"></div>
-        <div><label>Email (optional)</label><input id="fb_email" type="email" placeholder="you@example.com"></div>
-        <div><label>Type</label><select id="fb_type"><option>Idea</option><option>Bug</option><option>Question</option></select></div>
+        <div>
+          <label>Your name (optional)</label>
+          <input id="fb_name" placeholder="Jane">
+        </div>
+        <div>
+          <label>Email (optional)</label>
+          <input id="fb_email" type="email" placeholder="you@example.com">
+        </div>
+        <div>
+          <label>Type</label>
+          <select id="fb_type">
+            <option>Idea</option>
+            <option>Bug</option>
+            <option>Praise</option>
+            <option>Question</option>
+          </select>
+        </div>
       </div>
+
       <div class="grid cols-1" style="margin-top:8px">
-        <div><label>Message</label><textarea id="fb_msg" placeholder="Tell us what rules, what sucks, or what broke…"></textarea></div>
+        <div>
+          <label>Message</label>
+          <textarea id="fb_msg" placeholder="Tell us what rules, what sucks, or what broke…"></textarea>
+        </div>
       </div>
+
       <div class="grid cols-2" style="margin-top:8px">
-        <label class="row" style="gap:8px"><input id="fb_include" type="checkbox" checked> <span>Include app version and device info</span></label>
-        <div></div>
+        <label class="row" style="gap:8px">
+          <input id="fb_include" type="checkbox" checked>
+          <span>Include app version and device info</span>
+        </label>
+        <label class="row" style="gap:8px">
+          <input id="fb_anon" type="checkbox">
+          <span>Send anonymously (ignore name/email)</span>
+        </label>
       </div>
+
       <div class="grid cols-3" style="margin-top:8px">
-        <button id="fb_send" class="button primary">Send via GitHub</button>
-        <button id="fb_mail" class="button">Send via Email</button>
+        <button id="fb_send" class="button primary">Send Feedback</button>
+        <button id="fb_email" class="button">Email instead</button>
         <button id="fb_copy" class="button">Copy to clipboard</button>
       </div>
-      <small class="help" style="display:block;margin-top:8px">GitHub opens a pre-filled issue on your repo; email uses your mail app. We also keep a local copy.</small>
+
+      <small class="help" style="display:block;margin-top:8px">
+        “Send Feedback” sends privately from inside the app — no login or email app required.
+      </small>
     </div>
   `);
   app.appendChild(s);
 
   const $=id=>s.querySelector(id);
-  function buildBody(){
-    const name=$('#fb_name').value.trim()||'-';
-    const email=$('#fb_email').value.trim()||'-';
+
+  function build(){
+    const anon=$('#fb_anon').checked;
+    const name=anon?'-':($('#fb_name').value.trim()||'-');
+    const email=anon?'-':($('#fb_email').value.trim()||'-');
     const type=$('#fb_type').value;
     const msg=$('#fb_msg').value.trim();
-    const ua = navigator.userAgent;
-    const include=$('#fb_include').checked;
-    const meta = include ? `\n\n---\nApp: Your Damn Budget v${ver}\nUA: ${ua}\n` : '';
+    const include=$('#fb_include').checked && !anon;
+    const meta = include ? `\n---\nApp: Your Damn Budget v${ver}\nUA: ${navigator.userAgent}` : `\n---\nApp: Your Damn Budget v${ver}`;
     return {name,email,type,msg,meta};
   }
-  function persistCopy(entry){
-    state.feedback.push({...entry, ts:new Date().toISOString()}); save();
+
+  function toast(txt,ok=true){
+    const t=document.createElement('div');
+    t.textContent=txt;
+    Object.assign(t.style,{
+      position:'fixed',
+      left:'50%',
+      bottom:'calc(env(safe-area-inset-bottom,0) + 18px)',
+      transform:'translateX(-50%)',
+      background: ok?'#0ea5a8':'#ef4444',
+      color: ok?'#012a2c':'#fff',
+      padding:'10px 14px',
+      borderRadius:'10px',
+      zIndex:100,
+      fontWeight:'600'
+    });
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(),2200);
   }
-  $('#fb_send').onclick=()=>{
-    const e=buildBody(); if(!e.msg){alert('Give us at least a sentence 🙂');return;}
-    const title=encodeURIComponent(`${e.type}: ${e.msg.slice(0,60)}`);
-    const body=encodeURIComponent(`**From:** ${e.name} (${e.email})\n\n${e.msg}${e.meta}`);
-    const url=`https://github.com/MEffinDoC/YourDamnBudget/issues/new?title=${title}&body=${body}`;
-    persistCopy(e); window.open(url,'_blank');
+
+  $('#fb_send').onclick=async()=>{
+    const e=build();
+    if(!e.msg){toast('Say at least one sentence.',false);return;}
+    try{
+      const res = await fetch(FEEDBACK_ENDPOINT,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({type:e.type,msg:e.msg,name:e.name,email:e.email,meta:e.meta})
+      });
+      const js = await res.json().catch(()=>({}));
+      if(res.ok && js.ok!==false){ toast('Thanks for speaking your damn mind 💬'); }
+      else { throw new Error(js.error||'Failed'); }
+    }catch(err){
+      console.error(err);
+      toast('Could not send. Try Email instead?',false);
+    }
   };
-  $('#fb_mail').onclick=()=>{
-    const e=buildBody(); if(!e.msg){alert('Give us at least a sentence 🙂');return;}
+
+  $('#fb_email').onclick=()=>{
+    const e=build();
     const subj=encodeURIComponent(`YDB Feedback — ${e.type}`);
     const body=encodeURIComponent(`${e.msg}${e.meta}\nFrom: ${e.name} (${e.email})`);
-    // no email from you given earlier; feel free to change recipient
-    const url=`mailto:?subject=${subj}&body=${body}`;
-    persistCopy(e); location.href=url;
+    location.href=`mailto:yourdamnbudget@gmail.com?subject=${subj}&body=${body}`;
   };
+
   $('#fb_copy').onclick=async()=>{
-    const e=buildBody(); if(!e.msg){alert('Give us at least a sentence 🙂');return;}
+    const e=build();
     const text=`${e.type}\n\n${e.msg}${e.meta}\nFrom: ${e.name} (${e.email})`;
-    try{await navigator.clipboard.writeText(text); alert('Copied to clipboard.');}catch{alert('Select and copy manually.');}
-    persistCopy(e);
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('Copied to clipboard.');
+    }catch{
+      toast('Copy failed — long-press to select.',false);
+    }
   };
 }
 
