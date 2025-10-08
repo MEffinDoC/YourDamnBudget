@@ -30,7 +30,6 @@ button.primary,.button.primary{background:#0ea5a8;color:#012a2c;border:0;font-we
 /* Donate branded tiles */
 .donate-grid{gap:10px}
 .donate-grid a.button{display:flex;gap:10px;align-items:center;justify-content:center;border:0;outline:0}
-.donate-grid a.button svg{flex:0 0 22px}
 .donate-grid a.button:active{transform:translateY(1px);opacity:.9}
 .btn-paypal{background:#1e40af;color:#fff}
 .btn-cashapp{background:#00c244;color:#062b10}
