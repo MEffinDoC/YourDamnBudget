@@ -1,5 +1,6 @@
-// Your Damn Budget v15.8.6 — feedback textarea clears after send
-console.info('YDB app.js', '15.8.6');
+// Your Damn Budget v15.9.0 — wizard restored (modal), feedback clears, settings can re-run wizard
+console.info('YDB app.js', '15.9.0');
+import { runWizard } from './wizard.js?v=15.9.0';
 
 const app = document.getElementById('app');
 const TABS = document.querySelector('nav.tabs');
@@ -339,7 +340,7 @@ function renderDonate(){
 // ---------- FEEDBACK (optimistic + clear textbox) ----------
 function renderFeedback(){
   const FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec";
-  const ver='15.8.6';
+  const ver='15.9.0';
   const s=section('Feedback',`
     <div class="feedback">
       <label>Type</label>
@@ -369,9 +370,7 @@ function renderFeedback(){
     const blob = new Blob([JSON.stringify(payloadObj)], {type:'text/plain'});
 
     sending=true;
-    // Optimistic success
     toast('Thanks for speaking your damn mind 💬');
-    // Clear textbox right away
     textarea.value = '';
     try{
       if (navigator.sendBeacon) {
@@ -402,7 +401,10 @@ function renderSettings(){
       </div>
       <div><label>Fuck Around Funds (weekly)</label><input id="st_faf" type="number" step="0.01" value="${S.user.faFundsPerWeek}"></div>
     </div>
-    <div class="row" style="margin-top:8px"><button id="st_save" class="button primary">Save</button></div>
+    <div class="row" style="margin-top:8px;gap:8px">
+      <button id="st_save" class="button primary">Save</button>
+      <button id="st_wizard" class="button">Run setup again</button>
+    </div>
 
     <h3 style="margin-top:14px">Backup</h3>
     <div class="grid cols-3">
@@ -417,6 +419,9 @@ function renderSettings(){
     S.user.paydayWeekday=+s.querySelector('#st_dow').value||5;
     S.user.faFundsPerWeek=+s.querySelector('#st_faf').value||0;
     save(); toast('Saved.'); render();
+  };
+  s.querySelector('#st_wizard').onclick=()=>{
+    runWizard({state:S, save, onClose:()=>{ /* stay on settings */ }});
   };
   s.querySelector('#st_export').onclick=()=>{
     const a=document.createElement('a');
@@ -449,3 +454,9 @@ TABS.addEventListener('click',e=>{
   document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active'));
   b.classList.add('active'); render();
 });
+
+// ---------- Launch wizard on first-run ----------
+if(!S.ui.onboarded){
+  // slight delay so initial DOM paints, then show modal
+  setTimeout(()=>runWizard({state:S, save, onClose:()=>{ /* re-render current tab saved state */ render(); }}), 0);
+}
