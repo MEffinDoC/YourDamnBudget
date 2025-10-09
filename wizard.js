@@ -1,203 +1,228 @@
-// YDB wizard v15.9.0 — modal first-run setup (and re-run from Settings)
-export function runWizard({state, save, onClose}){
-  const S = state;
+<!-- /wizard.js -->
+<script>
+/* Your Damn Budget — Wizard v16.0.0 (adds payday step; keeps clean card look)
+   - Steps: Bank → Payday → Hours → Bills → One-offs
+   - "Add bill" label correct on first entry
+   - Inputs allow negative for bank
+*/
+(function () {
+  const $ = s => document.querySelector(s);
+  const state = (()=>{ try { return JSON.parse(localStorage.getItem('ydb_state')) || {}; } catch { return {}; } })();
+  const save = (s)=> localStorage.setItem('ydb_state', JSON.stringify(s));
 
-  // Overlay + modal
-  const overlay = document.createElement('div');
-  overlay.className = 'wiz-overlay';
-  overlay.innerHTML = `
-    <div class="wiz" role="dialog" aria-modal="true" aria-label="First-time setup">
-      <h2>Quick setup</h2>
-      <div class="wiz-body" id="wiz-body"></div>
-      <div class="wiz-actions">
-        <button id="wiz_skip" class="button">Skip for now</button>
-        <button id="wiz_next" class="button primary">Next</button>
-      </div>
-      <div class="wiz-steps" id="wiz-steps"></div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  // Steps
-  const steps = [
-    stepWelcome,
-    stepBank,
-    stepPayday,
-    stepPayBase,
-    stepWithholdingExample,
-    stepBillsOptional,
-    stepDone
-  ];
-  let i = 0;
-
-  function renderStep(){
-    const body = overlay.querySelector('#wiz-body');
-    const stepsEl = overlay.querySelector('#wiz-steps');
-    stepsEl.textContent = `Step ${i+1} of ${steps.length}`;
-    body.innerHTML = '';
-    steps[i]({S, save, root: body});
-    // Buttons
-    const nextBtn = overlay.querySelector('#wiz_next');
-    const skipBtn = overlay.querySelector('#wiz_skip');
-    nextBtn.textContent = (i === steps.length - 1) ? 'Finish' : 'Next';
-    skipBtn.textContent = (i === 0) ? 'Skip for now' : 'Back';
-    skipBtn.onclick = () => {
-      if(i === 0){ close(); return; }
-      i = Math.max(0, i-1);
-      renderStep();
-    };
-    nextBtn.onclick = async () => {
-      if(typeof steps[i].onNext === 'function'){
-        const ok = await steps[i].onNext({S, save, root: body});
-        if(ok === false) return;
-      }
-      if(i < steps.length - 1){ i++; renderStep(); }
-      else { S.ui.onboarded = true; save(); close(); }
-    };
+  function openWizardIfNeeded() {
+    // show if fresh or user taps "Run Setup" in Settings (call YDB.openWizard())
+    const seen = localStorage.getItem('ydb_wizard_seen');
+    if (!seen) open();
   }
 
-  function close(){
-    overlay.remove();
-    if(typeof onClose === 'function') onClose();
+  function open() {
+    const wrap = document.createElement('div');
+    wrap.id = 'wizard';
+    wrap.innerHTML = `
+      <div class="wiz-backdrop"></div>
+      <div class="wiz-card">
+        <div class="wiz-head">Let’s set you up</div>
+        <div class="wiz-body"></div>
+        <div class="wiz-foot">
+          <button class="btn-secondary" id="wiz_prev">Back</button>
+          <button class="btn" id="wiz_next">Next</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    document.body.classList.add('modal-open');
+
+    const steps = [stepBank, stepPayday, stepHours, stepBills, stepOneOffs];
+    let i = 0;
+    const body = wrap.querySelector('.wiz-body');
+    const prev = wrap.querySelector('#wiz_prev');
+    const next = wrap.querySelector('#wiz_next');
+
+    function render() {
+      body.innerHTML = '';
+      steps[i](body);
+      prev.style.visibility = (i === 0) ? 'hidden' : 'visible';
+      next.textContent = (i === steps.length - 1) ? 'Finish' : 'Next';
+    }
+    prev.onclick = ()=>{ if (i>0) { i--; render(); } };
+    next.onclick = ()=>{ 
+      // allow moving freely; each step saves its own fields
+      if (i < steps.length - 1) i++; else close();
+      render();
+    };
+    render();
   }
 
-  renderStep();
-}
+  function close() {
+    const w = $('#wizard');
+    if (w) { w.remove(); document.body.classList.remove('modal-open'); }
+    localStorage.setItem('ydb_wizard_seen', '1');
+  }
 
-/* ---- individual steps ---- */
-
-function stepWelcome({root}){
-  root.innerHTML = `
-    <p class="help">We’ll grab a few numbers so your budget tells the damn truth from day one. You can change any of this later in Settings.</p>
-    <div class="hint">Takes about 60 seconds.</div>
-  `;
-}
-
-function stepBank({S, root}){
-  root.innerHTML = `
-    <label>Current bank balance</label>
-    <input id="w_bank" type="number" step="0.01" value="${S.user.bankBalance||0}">
-  `;
-  stepBank.onNext = ({S, save, root})=>{
-    const v = +root.querySelector('#w_bank').value || 0;
-    S.user.bankBalance = v; save(); return true;
-  };
-}
-
-function stepPayday({S, root}){
-  root.innerHTML = `
-    <label>Payday weekday</label>
-    <select id="w_dow">
-      ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<option value="${i}" ${i==S.user.paydayWeekday?'selected':''}>${d}</option>`).join('')}
-    </select>
-  `;
-  stepPayday.onNext = ({S, save, root})=>{
-    S.user.paydayWeekday = +root.querySelector('#w_dow').value || 5; save(); return true;
-  };
-}
-
-function stepPayBase({S, root}){
-  root.innerHTML = `
-    <div class="grid cols-2">
-      <div>
-        <label>Base hourly rate</label>
-        <input id="w_base" type="number" step="0.01" value="${S.pay.baseHourly||0}">
+  // ---- steps ----
+  function stepBank(el) {
+    const s = state;
+    const bank = s.bank ?? 0;
+    const payday = (s.settings?.payday?.weekday ?? 5);
+    el.innerHTML = `
+      <div class="wiz-section">
+        <h3>What’s in your account right now?</h3>
+        <input id="wiz_bank" class="input allow-negative" type="number" inputmode="decimal" placeholder="e.g., 240" value="${bank}">
       </div>
-      <div>
+      <div class="muted small">Tip: You can enter negative if you’re overdrawn.</div>
+    `;
+    el.querySelector('#wiz_bank').addEventListener('change', (e)=>{
+      state.bank = +e.target.value || 0; save(state);
+    });
+  }
+
+  function stepPayday(el) {
+    const s = state;
+    const cadence = s.settings?.payday?.cadence || 'weekly';
+    const weekday = s.settings?.payday?.weekday ?? 5;
+    const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    el.innerHTML = `
+      <div class="wiz-section">
+        <h3>When do you get paid?</h3>
+        <div class="pill-row payday-cadence">
+          <button class="pill ${cadence==='weekly'?'active':''}" data-cad="weekly">Weekly</button>
+          <button class="pill ${cadence==='biweekly'?'active':''}" data-cad="biweekly">Bi-weekly</button>
+        </div>
+
+        <div class="pill-row payday-weekday" style="margin-top:8px">
+          ${wd.map((n,idx)=>`<button class="pill ${idx===weekday?'active':''}" data-wd="${idx}">${n}</button>`).join('')}
+        </div>
+        <div class="muted small" style="margin-top:8px">Heads up: your Friday paycheck funds next week (Sat–Thu).</div>
+      </div>
+    `;
+    el.querySelectorAll('.payday-cadence .pill').forEach(b=>{
+      b.onclick = ()=>{
+        const cad = b.getAttribute('data-cad');
+        state.settings = state.settings || {}; state.settings.payday = state.settings.payday || {};
+        state.settings.payday.cadence = cad; save(state);
+        window.YDB && window.YDB.savePaydayFromWizard(cad, state.settings.payday.weekday ?? 5);
+        stepPayday(el);
+      };
+    });
+    el.querySelectorAll('.payday-weekday .pill').forEach(b=>{
+      b.onclick = ()=>{
+        const wd = +b.getAttribute('data-wd');
+        state.settings = state.settings || {}; state.settings.payday = state.settings.payday || { cadence:'weekly' };
+        state.settings.payday.weekday = wd; save(state);
+        window.YDB && window.YDB.savePaydayFromWizard(state.settings.payday.cadence || 'weekly', wd);
+        stepPayday(el);
+      };
+    });
+  }
+
+  function stepHours(el) {
+    const s = state.settings || (state.settings = {});
+    const base = s.baseRate ?? 20;
+    const otm = s.otMultiplier ?? 1.5;
+    const reg = s.regHours ?? 40;
+    const oth = s.otHours ?? 0;
+    const wh  = s.withholding ?? 0.2;
+
+    el.innerHTML = `
+      <div class="wiz-section">
+        <h3>Hours & Pay</h3>
+        <label>Base hourly</label>
+        <input id="wiz_base" class="input" type="number" inputmode="decimal" value="${base}">
         <label>OT multiplier</label>
-        <select id="w_ot">
-          <option value="1.5" ${S.pay.otMultiplier==1.5?'selected':''}>1.5× (standard)</option>
-          <option value="2" ${S.pay.otMultiplier==2?'selected':''}>2× (double time)</option>
-          <option value="2.5" ${S.pay.otMultiplier==2.5?'selected':''}>2.5×</option>
+        <select id="wiz_otm" class="input">
+          <option ${otm==1.5?'selected':''} value="1.5">1.5× (standard)</option>
+          <option ${otm==2?'selected':''} value="2">2×</option>
+          <option ${otm==1?'selected':''} value="1">No OT</option>
         </select>
-        <div class="hint">You can adjust later if your state/company does something special.</div>
+        <label>Regular hours</label>
+        <input id="wiz_reg" class="input" type="number" inputmode="decimal" value="${reg}">
+        <label>OT hours</label>
+        <input id="wiz_oth" class="input" type="number" inputmode="decimal" value="${oth}">
+        <label>Withholding (0–1)</label>
+        <input id="wiz_wh" class="input" type="number" inputmode="decimal" step="0.001" value="${(Math.round(wh*1000)/1000)}">
       </div>
-    </div>
-  `;
-  stepPayBase.onNext = ({S, save, root})=>{
-    S.pay.baseHourly = +root.querySelector('#w_base').value || 0;
-    S.pay.otMultiplier = +root.querySelector('#w_ot').value || 1.5;
-    save(); return true;
-  };
-}
-
-function stepWithholdingExample({S, root}){
-  root.innerHTML = `
-    <p class="help">Give us one real paycheck to estimate your withholding automatically (optional). We’ll compute <b>withholding = 1 - net/gross</b>.</p>
-    <div class="grid cols-2">
-      <div>
-        <label>Example gross</label>
-        <input id="w_gross" type="number" step="0.01" placeholder="e.g., 1280.00">
-      </div>
-      <div>
-        <label>Example net</label>
-        <input id="w_net" type="number" step="0.01" placeholder="e.g., 1024.00">
-      </div>
-    </div>
-    <div class="hint">Skip if you want to set withholding manually later.</div>
-  `;
-  stepWithholdingExample.onNext = ({S, save, root})=>{
-    const g = +root.querySelector('#w_gross').value || 0;
-    const n = +root.querySelector('#w_net').value || 0;
-    if(g>0 && n>0 && n<=g){
-      S.pay.withholding = Math.max(0, Math.min(0.6, 1 - (n/g)));
-      save();
-    }
-    return true;
-  };
-}
-
-function stepBillsOptional({S, root}){
-  root.innerHTML = `
-    <p class="help">Add any must-pay bills now (optional). You can add more later in “Shit That Must Get Paid”.</p>
-    <div class="grid cols-3">
-      <div><label>Name</label><input id="wb_name" placeholder="Rent"></div>
-      <div><label>Amount</label><input id="wb_amt" type="number" step="0.01" placeholder="1200.00"></div>
-      <div><label>Due day (1–31)</label><input id="wb_day" type="number" min="1" max="31" value="1"></div>
-    </div>
-    <div class="wiz-actions" style="justify-content:flex-start;margin-top:8px">
-      <button id="wb_add" class="button">Add another</button>
-    </div>
-    <div class="table-scroll" style="margin-top:8px">
-      <table>
-        <thead><tr><th>Name</th><th>$</th><th>Due</th><th></th></tr></thead>
-        <tbody id="wb_body"></tbody>
-      </table>
-    </div>
-  `;
-  const tbody = root.querySelector('#wb_body');
-  function draw(){
-    tbody.innerHTML = (S.bills||[]).map(b=>`
-      <tr>
-        <td>${escape(b.name)}</td><td>${money(b.amount)}</td><td>${b.dueDay}</td>
-        <td><button class="button" data-del="${b.id}">Delete</button></td>
-      </tr>`).join('') || `<tr><td colspan="4" class="help">No bills yet.</td></tr>`;
+    `;
+    el.querySelector('#wiz_base').onchange = e => { state.settings.baseRate = +e.target.value || 0; save(state); };
+    el.querySelector('#wiz_otm').onchange = e => { state.settings.otMultiplier = +e.target.value || 1.5; save(state); };
+    el.querySelector('#wiz_reg').onchange = e => { state.settings.regHours = +e.target.value || 0; save(state); };
+    el.querySelector('#wiz_oth').onchange = e => { state.settings.otHours = +e.target.value || 0; save(state); };
+    el.querySelector('#wiz_wh').onchange = e => { state.settings.withholding = +e.target.value || 0; save(state); };
   }
-  function escape(s){return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
-  function money(n){return (isNaN(+n)?0:+n).toLocaleString(undefined,{style:'currency',currency:'USD'});}
-  draw();
 
-  root.querySelector('#wb_add').onclick=()=>{
-    const name=root.querySelector('#wb_name').value.trim();
-    const amt=+root.querySelector('#wb_amt').value||0;
-    const day=+root.querySelector('#wb_day').value||1;
-    if(!name||amt<=0) return;
-    S.bills.push({id:Math.random().toString(36).slice(2,9),name,amount:amt,dueDay:day});
-    (root.querySelector('#wb_name').value=''); (root.querySelector('#wb_amt').value=''); (root.querySelector('#wb_day').value='1');
-    draw();
-  };
-  root.addEventListener('click',e=>{
-    if(e.target.dataset.del){
-      S.bills = S.bills.filter(x=>x.id!==e.target.dataset.del);
-      draw();
+  function stepBills(el) {
+    const bills = state.bills || (state.bills = []);
+    el.innerHTML = `
+      <div class="wiz-section">
+        <h3>Sh*t That Must Get Paid</h3>
+        <div class="grid2">
+          <input id="wiz_bill_name" class="input" placeholder="e.g., Rent">
+          <input id="wiz_bill_amt" class="input" type="number" inputmode="decimal" placeholder="Amount">
+          <input id="wiz_bill_day" class="input" type="number" inputmode="numeric" placeholder="Due day (1–31)">
+          <button id="wiz_bill_add" class="btn">${bills.length ? 'Add another' : 'Add bill'}</button>
+        </div>
+        <div id="wiz_bill_list" class="list small"></div>
+      </div>
+    `;
+    const list = el.querySelector('#wiz_bill_list');
+    function paint() {
+      list.innerHTML = bills.map(b=>`<div>${b.name} — $${(+b.amount||0).toFixed(2)} (day ${b.dueDay})</div>`).join('') || `<div class="muted">None yet.</div>`;
+      el.querySelector('#wiz_bill_add').textContent = bills.length ? 'Add another' : 'Add bill';
     }
-  });
-  stepBillsOptional.onNext = ({save})=>{ save(); return true; };
-}
+    paint();
+    el.querySelector('#wiz_bill_add').onclick = ()=>{
+      const name = el.querySelector('#wiz_bill_name').value.trim();
+      const amt  = +el.querySelector('#wiz_bill_amt').value || 0;
+      const day  = +el.querySelector('#wiz_bill_day').value || 1;
+      if (!name) return;
+      bills.push({ id: crypto.randomUUID(), name, amount: amt, dueDay: day });
+      save(state); paint();
+      el.querySelector('#wiz_bill_name').value='';
+      el.querySelector('#wiz_bill_amt').value='';
+      el.querySelector('#wiz_bill_day').value='';
+    };
+  }
 
-function stepDone({root}){
-  root.innerHTML = `
-    <p>All set. Your dashboard will use this to tell you what you can actually afford this week.</p>
-    <div class="hint">You can re-run this from Settings → “Run setup again”.</div>
-  `;
-}
+  function stepOneOffs(el) {
+    const offs = state.oneOffs || (state.oneOffs = []);
+    el.innerHTML = `
+      <div class="wiz-section">
+        <h3>Catch-Up Sh*t (one-offs)</h3>
+        <div class="grid2">
+          <input id="wiz_off_name" class="input" placeholder="e.g., Last month electric">
+          <input id="wiz_off_amt" class="input" type="number" inputmode="decimal" placeholder="Amount">
+          <input id="wiz_off_date" class="input" type="date">
+          <label class="row"><input id="wiz_off_defer" type="checkbox" checked> Defer to next week if needed</label>
+          <button id="wiz_off_add" class="btn">${offs.length ? 'Add another' : 'Add item'}</button>
+        </div>
+        <div id="wiz_off_list" class="list small"></div>
+      </div>
+    `;
+    const list = el.querySelector('#wiz_off_list');
+    function paint() {
+      list.innerHTML = offs.map(o=>`<div>${o.name} — $${(+o.amount||0).toFixed(2)} (${o.dateISO || 'no date'}) ${o.defer?'<span class="pill">defer</span>':''}</div>`).join('') || `<div class="muted">None yet.</div>`;
+      el.querySelector('#wiz_off_add').textContent = offs.length ? 'Add another' : 'Add item';
+    }
+    paint();
+    el.querySelector('#wiz_off_add').onclick = ()=>{
+      const name = el.querySelector('#wiz_off_name').value.trim();
+      const amt  = +el.querySelector('#wiz_off_amt').value || 0;
+      const date = el.querySelector('#wiz_off_date').value || null;
+      const def  = el.querySelector('#wiz_off_defer').checked;
+      if (!name || !date) return;
+      offs.push({ id: crypto.randomUUID(), name, amount: amt, dateISO: date, defer: !!def, includeThisWeek: !def });
+      save(state); paint();
+      el.querySelector('#wiz_off_name').value='';
+      el.querySelector('#wiz_off_amt').value='';
+      el.querySelector('#wiz_off_date').value='';
+      el.querySelector('#wiz_off_defer').checked=true;
+    };
+  }
+
+  // expose manual opener from Settings
+  window.YDB = window.YDB || {};
+  window.YDB.openWizard = open;
+
+  document.addEventListener('DOMContentLoaded', openWizardIfNeeded);
+})();
+</script>
