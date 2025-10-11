@@ -1,20 +1,18 @@
-/* Your Damn Budget — v16.0.0 (surgical logic pass)
-   - Weekly window = day after last payday → next payday (exclusive)
-   - THIS week cash = bank only (no paycheck); paycheck funds NEXT week
-   - Bills/loans/one-offs are counted if dueDate is in [start, nextPayday)
-   - One-offs: "Defer to next week" toggle respected (carry forward)
-   - Withholding display cleaned up; negative bank supported
+/* Your Damn Budget — v16.0.1
+   - Weekly window: day after last payday → next payday (exclusive)
+   - This week = BANK ONLY (paycheck funds NEXT week)
+   - Due lists include bills/loans in-window; one-offs respect "defer"
 */
 (function () {
-  const VERSION = 'v16.0.0';
+  const VERSION = 'v16.0.1';
 
-  // ---------- storage ----------
+  // ------------ storage ------------
   const LS_KEY = 'ydb_state';
   const defaultState = () => ({
     meta: { version: VERSION },
     bank: 0,
     settings: {
-      payday: { cadence: 'weekly', weekday: 5 }, // 0=Sun..6=Sat; 5=Fri
+      payday: { cadence: 'weekly', weekday: 5 }, // 0=Sun..6=Sat
       fafWeekly: 50,
       withholding: 0.2,
       baseRate: 20,
@@ -24,7 +22,7 @@
     },
     bills: [],          // {id,name,amount,dueDay}
     loans: [],          // {id,name,amount,dueDay}
-    oneOffs: [],        // {id,name,amount,dateISO,defer:true|false, includeThisWeek?:bool}
+    oneOffs: [],        // {id,name,amount,dateISO,defer:boolean,includeThisWeek?:boolean}
     envelopes: [],      // {id,name,weekly}
     paid: {},           // periodKey -> {"kind:id": true}
   });
@@ -34,28 +32,29 @@
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return defaultState();
       const s = JSON.parse(raw);
-      if (s.settings && typeof s.settings.paydayWeekday === 'number') {
-        s.settings.payday = s.settings.payday || { cadence: 'weekly', weekday: s.settings.paydayWeekday };
+      if (!s.settings) s.settings = {};
+      if (!s.settings.payday) {
+        const wd = (typeof s.settings.paydayWeekday === 'number') ? s.settings.paydayWeekday : 5;
+        s.settings.payday = { cadence: 'weekly', weekday: wd };
       }
-      if (!s.settings?.payday) s.settings.payday = { cadence: 'weekly', weekday: 5 };
       return s;
     } catch { return defaultState(); }
   }
   function saveState(s) { localStorage.setItem(LS_KEY, JSON.stringify(s)); }
   let state = loadState();
 
-  // ---------- utils ----------
+  // ------------ utils ------------
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
   const fmtMoney = (n) => (n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`);
   const pct = n => `${(n * 100).toFixed(1)}%`;
   const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const clampDOMoney = (v) => (isFinite(+v) ? +v : 0);
+  const num = (v) => (isFinite(+v) ? +v : 0);
 
   const dfShort = new Intl.DateTimeFormat(undefined, { month: 'short', day: '2-digit' });
   const dfRow = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: '2-digit' });
 
-  // ---------- pay period math ----------
+  // ------------ windows / payday ------------
   function getLastNextPayday(today, weekday, cadence) {
     const t = startOfDay(today);
     const diff = (t.getDay() - weekday + 7) % 7; // days since last payday
@@ -64,7 +63,7 @@
     let next = new Date(last);
     next.setDate(last.getDate() + (cadence === 'biweekly' ? 14 : 7));
 
-    // If today is payday, treat paycheck as funding NEXT period
+    // If today IS payday, treat funds as next period
     if (+t === +last) {
       const len = cadence === 'biweekly' ? 14 : 7;
       last.setDate(last.getDate() - len);
@@ -84,6 +83,7 @@
     const d2 = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     return `${d2(win.start)}_${d2(win.end)}`;
   }
+
   function dueDayToDateAround(dueDay, win) {
     const m = win.start.getMonth(), y = win.start.getFullYear();
     const lastDay = new Date(y, m + 1, 0).getDate();
@@ -97,15 +97,15 @@
     }
     return candidate;
   }
-  function inWindow(date, win) {
+  const inWindow = (date, win) => {
     const d = startOfDay(date);
     return d >= startOfDay(win.start) && d < startOfDay(win.end);
-  }
+  };
 
-  // ---------- totals & lists ----------
-  function weeklyEnvelopesTotal() {
-    return (state.envelopes || []).reduce((a, e) => a + clampDOMoney(e.weekly || 0), 0);
-  }
+  // ------------ totals / lists ------------
+  const weeklyEnvelopesTotal = () =>
+    (state.envelopes || []).reduce((a, e) => a + num(e.weekly), 0);
+
   function listDueItems(win) {
     const list = [];
     (state.bills || []).forEach(b => {
@@ -127,17 +127,19 @@
     list.sort((a,b) => (+a.when - +b.when) || a.name.localeCompare(b.name));
     return list;
   }
+
   function calcThisWeek(win) {
     const bank = +state.bank || 0;
     const buckets = weeklyEnvelopesTotal();
     const faf = +state.settings.fafWeekly || 0;
     const dues = listDueItems(win);
-    const mustPays = dues.filter(d => d.kind === 'bill' || d.kind === 'loan').reduce((a,d)=>a+d.amount,0);
+    const mustPays = dues.filter(d => d.kind !== 'oneoff').reduce((a,d)=>a+d.amount,0);
     const oneOffIncluded = dues.filter(d => d.kind === 'oneoff' && (d.include !== false)).reduce((a,d)=>a+d.amount,0);
     const cashThisWeek = bank; // paycheck excluded this period
     const after = cashThisWeek - mustPays - oneOffIncluded - buckets - faf;
     return { bank, buckets, faf, dues, mustPays, oneOffIncluded, cashThisWeek, after };
   }
+
   function estimateNetPay() {
     const s = state.settings || {};
     const gross = (+s.baseRate || 0) * (+s.regHours || 0) +
@@ -146,17 +148,17 @@
     return { gross, net };
   }
 
-  // ---------- paid tracking ----------
-  function isPaid(winKey, kind, id) { return !!state.paid?.[winKey]?.[`${kind}:${id}`]; }
-  function setPaid(winKey, kind, id, v) {
+  // ------------ paid tracking ------------
+  const isPaid = (key, kind, id) => !!state.paid?.[key]?.[`${kind}:${id}`];
+  function setPaid(key, kind, id, v) {
     state.paid ||= {};
-    state.paid[winKey] ||= {};
-    if (v) state.paid[winKey][`${kind}:${id}`] = true;
-    else delete state.paid[winKey][`${kind}:${id}`];
+    state.paid[key] ||= {};
+    if (v) state.paid[key][`${kind}:${id}`] = true;
+    else delete state.paid[key][`${kind}:${id}`];
     saveState(state);
   }
 
-  // ---------- renderers ----------
+  // ------------ renderers ------------
   function renderHome() {
     const home = $('#homePage'); if (!home) return;
 
@@ -215,7 +217,7 @@
     const affordBtn = $('#afford_btn');
     if (affordBtn) {
       affordBtn.onclick = () => {
-        const amt = clampDOMoney($('#afford_amount')?.value);
+        const amt = num($('#afford_amount')?.value);
         if (!isFinite(amt) || amt <= 0) return;
         const would = calc.after - amt;
         const out = $('#afford_result');
@@ -234,20 +236,18 @@
     const est = estimateNetPay();
     const withhold = +s.withholding || 0;
 
-    const wIn = $('#hours_withholding'); if (wIn) {
-      wIn.value = (Math.round(withhold * 1000) / 1000).toString();
-    }
+    const wIn = $('#hours_withholding'); if (wIn) wIn.value = (Math.round(withhold*1000)/1000);
     const gEl = $('#hours_gross'); if (gEl) gEl.textContent = fmtMoney(est.gross);
-    const nEl = $('#hours_net'); if (nEl) gEl && (nEl.textContent = fmtMoney(est.net));
+    const nEl = $('#hours_net'); if (nEl) nEl.textContent = fmtMoney(est.net);
     const pEl = $('#hours_withhold_pct'); if (pEl) pEl.textContent = pct(withhold);
 
     const saveBtn = $('#hours_save'); if (saveBtn) {
       saveBtn.onclick = () => {
-        s.baseRate = clampDOMoney($('#hours_base')?.value);
-        s.otMultiplier = clampDOMoney($('#hours_otmult')?.value) || 1.5;
-        s.regHours = clampDOMoney($('#hours_reg')?.value);
-        s.otHours = clampDOMoney($('#hours_ot')?.value);
-        s.withholding = clampDOMoney($('#hours_withholding')?.value);
+        s.baseRate    = num($('#hours_base')?.value);
+        s.otMultiplier= num($('#hours_otmult')?.value) || 1.5;
+        s.regHours    = num($('#hours_reg')?.value);
+        s.otHours     = num($('#hours_ot')?.value);
+        s.withholding = num($('#hours_withholding')?.value);
         saveState(state);
         renderHours(); renderHome();
       };
@@ -261,19 +261,16 @@
     }
   }
 
-  function renderOneOffsPage() {
-    const c = $('#oneOffsPage'); if (!c) return;
-  }
+  function renderOneOffsPage() { /* table is static HTML; JS not required here */ }
 
   function renderSettings() {
     const c = $('#settingsPage'); if (!c) return;
-    const bankInput = $('#settings_bank'); if (bankInput) {
+    const bankInput = $('#settings_bank');
+    if (bankInput) {
       bankInput.removeAttribute('min');
       bankInput.setAttribute('inputmode','decimal');
-      bankInput.onchange = () => {
-        state.bank = clampDOMoney(bankInput.value);
-        saveState(state); renderHome();
-      };
+      bankInput.value = state.bank ?? 0;
+      bankInput.onchange = () => { state.bank = num(bankInput.value); saveState(state); renderHome(); };
     }
     // weekday pills
     $$('.payday-weekday [data-wd]').forEach(el=>{
@@ -289,7 +286,7 @@
     });
   }
 
-  // ---------- boot ----------
+  // ------------ boot ------------
   document.addEventListener('DOMContentLoaded', () => {
     $$('#settings_bank, .allow-negative').forEach(el=>{
       el.removeAttribute('min'); el.setAttribute('inputmode','decimal');
@@ -298,7 +295,7 @@
     window.addEventListener('hashchange', ()=>{ renderHome(); renderHours(); renderBillsPage(); renderOneOffsPage(); renderSettings(); });
   });
 
-  // tiny helpers for wizard
+  // wizard helpers
   window.YDB = window.YDB || {};
   window.YDB.savePaydayFromWizard = (cadence, weekday) => {
     state.settings.payday = { cadence, weekday };
