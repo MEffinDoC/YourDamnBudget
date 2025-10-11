@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Your Damn Budget</title>
 
-  <link rel="icon" href="./icons/flat-192.png">
-  <link rel="apple-touch-icon" href="./icons/flat-192.png">
+  <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="theme-color" content="#0b1620">
+  <meta name="theme-color" content="#0b1620" />
+  <link rel="icon" href="./icons/flat-192.png" />
+  <link rel="apple-touch-icon" href="./icons/flat-192.png" />
 
-  <link rel="stylesheet" href="./styles.css?v=15.9.1" />
+  <link rel="stylesheet" href="./styles.css?v=15.8-lkg" />
 </head>
 <body>
-  <!-- App header (SINGLE INSTANCE) -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-coin">$</div>
@@ -21,56 +21,33 @@
     </div>
   </header>
 
-  <!-- Top banner (SINGLE) -->
-  <div class="banner top" id="ad-top">Top banner</div>
+  <div class="banner top">Top banner</div>
 
-  <!-- Tab bar (SINGLE) -->
   <nav class="tabbar" id="tabbar">
-    <button class="tab active" data-page="home">
-      <div class="t">Home</div><small>Reality</small>
-    </button>
-    <button class="tab" data-page="crystal">
-      <div class="t">Crystal Ball</div><small>12-week</small>
-    </button>
-    <button class="tab" data-page="hours">
-      <div class="t">Hours</div><small>Paycheck</small>
-    </button>
-    <button class="tab" data-page="must">
-      <div class="t">Shit That Must Get Paid</div><small>bills & housing</small>
-    </button>
-    <button class="tab" data-page="catchup">
-      <div class="t">Catch-Up Sh*t</div><small>one-offs & overdue</small>
-    </button>
-    <button class="tab" data-page="buckets">
-      <div class="t">Where It Goes</div><small>buckets</small>
-    </button>
-    <button class="tab" data-page="debts">
-      <div class="t">Your Damn Debts</div><small>loans & IOUs</small>
-    </button>
-    <button class="tab" data-page="donate">
-      <div class="t">Donate</div><small>optional</small>
-    </button>
-    <button class="tab" data-page="feedback">
-      <div class="t">Feedback</div><small>ideas & bugs</small>
-    </button>
-    <button class="tab" data-page="settings">
-      <div class="t">Settings</div><small>tweaks</small>
-    </button>
+    <button class="tab active" data-page="home"><div class="t">Home</div><small>Reality</small></button>
+    <button class="tab" data-page="crystal"><div class="t">Crystal Ball</div><small>12-week</small></button>
+    <button class="tab" data-page="hours"><div class="t">Hours</div><small>Paycheck</small></button>
+    <button class="tab" data-page="must"><div class="t">Shit That Must Get Paid</div><small>bills & housing</small></button>
+    <button class="tab" data-page="catchup"><div class="t">Catch-Up Sh*t</div><small>one-offs & overdue</small></button>
+    <button class="tab" data-page="buckets"><div class="t">Where It Goes</div><small>buckets</small></button>
+    <button class="tab" data-page="debts"><div class="t">Your Damn Debts</div><small>loans & IOUs</small></button>
+    <button class="tab" data-page="donate"><div class="t">Donate</div><small>optional</small></button>
+    <button class="tab" data-page="feedback"><div class="t">Feedback</div><small>ideas & bugs</small></button>
+    <button class="tab" data-page="settings"><div class="t">Settings</div><small>tweaks</small></button>
   </nav>
 
-  <!-- Pages container (SINGLE) -->
   <main id="pages">
     <!-- HOME -->
     <section id="home" class="page active">
       <div class="card">
         <div class="card-title">Weekly Damage Report</div>
-        <div class="muted small" id="home-range">Oct 04–Oct 09 (Fri payday)</div>
+        <div class="muted small" id="home-range"></div>
 
         <div class="kv"><div class="k">Cash This Week</div><div class="v big" id="cashThisWeek">$0.00</div></div>
 
         <details>
           <summary class="small">Show breakdown</summary>
-          <div class="small muted" id="cashBreakdown">Bank + Est. paycheck – must-pays – buckets</div>
+          <div class="small muted" id="cashBreakdown"></div>
         </details>
 
         <div class="kv"><div class="k">F*ck Around Funds</div><div class="v" id="faf">$50.00</div></div>
@@ -82,7 +59,7 @@
         <div class="table-wrap">
           <table class="tbl" id="dueTable">
             <thead><tr><th>Date</th><th>What</th><th class="right">$</th><th>Paid</th></tr></thead>
-            <tbody><!-- filled by JS --></tbody>
+            <tbody></tbody>
           </table>
         </div>
       </div>
@@ -99,9 +76,7 @@
             <input id="affordDate" type="date" />
           </div>
         </div>
-        <div style="margin-top:12px">
-          <button class="btn" id="affordAsk">Ask my damn budget</button>
-        </div>
+        <div style="margin-top:12px"><button class="btn" id="affordAsk">Ask my damn budget</button></div>
         <div class="small muted" id="affordResult" style="margin-top:8px"></div>
       </div>
     </section>
@@ -120,14 +95,15 @@
     <section id="hours" class="page">
       <div class="card">
         <div class="card-title">Hours & Paycheck</div>
+
         <label class="small muted">Base hourly</label>
         <input id="payBase" inputmode="decimal" placeholder="20" />
 
         <label class="small muted" style="margin-top:12px">OT multiplier</label>
         <select id="otMult">
           <option value="1.5">1.5× (standard)</option>
-          <option value="2">2×</option>
           <option value="1.75">1.75×</option>
+          <option value="2">2×</option>
         </select>
 
         <label class="small muted" style="margin-top:12px">Withholding (auto or manual)</label>
@@ -152,13 +128,11 @@
 
         <label class="small muted" style="margin-top:12px">Example pay (gross)</label>
         <input id="grossExample" inputmode="decimal" placeholder="e.g., 1280.00" />
-        <div style="margin-top:8px">
-          <button class="btn-secondary" id="applyExample">Apply (infer withholding)</button>
-        </div>
+        <div style="margin-top:8px"><button class="btn-secondary" id="applyExample">Apply (infer withholding)</button></div>
       </div>
     </section>
 
-    <!-- MUST PAYS -->
+    <!-- MUST PAY -->
     <section id="must" class="page">
       <div class="card">
         <div class="card-title">Shit That Must Get Paid</div>
@@ -173,7 +147,7 @@
         <div class="table-wrap" style="margin-top:14px">
           <table class="tbl" id="billTable">
             <thead><tr><th>Name</th><th class="right">$</th><th>Due day</th><th></th></tr></thead>
-            <tbody><!-- JS --></tbody>
+            <tbody></tbody>
           </table>
         </div>
       </div>
@@ -196,7 +170,7 @@
         <div class="table-wrap" style="margin-top:14px">
           <table class="tbl" id="oneTable">
             <thead><tr><th>Name</th><th class="right">$</th><th>Defer?</th><th></th></tr></thead>
-            <tbody><!-- JS --></tbody>
+            <tbody></tbody>
           </table>
         </div>
       </div>
@@ -221,7 +195,7 @@
         <div class="table-wrap" style="margin-top:14px">
           <table class="tbl" id="bTable">
             <thead><tr><th>Name</th><th class="right">$ / wk</th><th></th></tr></thead>
-            <tbody><!-- JS --></tbody>
+            <tbody></tbody>
           </table>
         </div>
       </div>
@@ -246,7 +220,7 @@
         <div class="table-wrap" style="margin-top:14px">
           <table class="tbl" id="dTable">
             <thead><tr><th>Name</th><th class="right">Min / wk</th><th></th></tr></thead>
-            <tbody><!-- JS --></tbody>
+            <tbody></tbody>
           </table>
         </div>
       </div>
@@ -309,15 +283,23 @@
             </select>
           </div>
         </div>
-        <div style="margin-top:10px"><button class="btn" id="saveSettings">Save</button></div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn" id="saveSettings">Save</button>
+          <button class="btn-secondary" id="runWizard">Run setup again</button>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- Bottom banner (SINGLE) -->
-  <div class="banner bottom" id="ad-bot">Bottom banner</div>
+  <div class="banner bottom">Bottom banner</div>
 
-  <!-- Wizard overlay is injected by JS (SINGLE) -->
-  <script src="./app.js?v=15.9.1"></script>
+  <footer class="foot">YDB v15.8 (LKG)</footer>
+
+  <script src="./app.js?v=15.8-lkg"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js?v=15.8-lkg');
+    }
+  </script>
 </body>
 </html>
