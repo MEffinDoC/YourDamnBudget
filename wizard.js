@@ -1,213 +1,114 @@
-/* Your Damn Budget — Wizard v16.0.1
-   Steps: Bank → Payday → Hours → Bills → One-offs
-   - First bill button shows “Add bill”; after that “Add another”
-   - Bank allows negative values
+/* wizard.js — Your Damn Budget — v15.9.0 (LKG)
+   - Provides window.openWizard()
+   - Wires #runWizard click
+   - Saves to STORE_KEY used by v15.9.0 app.js and reloads the page
 */
-(function () {
-  const $ = s => document.querySelector(s);
-  const state = (()=>{ try { return JSON.parse(localStorage.getItem('ydb_state')) || {}; } catch { return {}; } })();
-  const save = (s)=> localStorage.setItem('ydb_state', JSON.stringify(s));
+(function(){
+  const STORE_KEY = 'ydb:data:v15.9.0';
 
-  function openWizardIfNeeded() {
-    const seen = localStorage.getItem('ydb_wizard_seen');
-    if (!seen) open();
+  function loadState(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; }
+    catch { return null; }
   }
-  function open() {
-    const wrap = document.createElement('div');
-    wrap.id = 'wizard';
-    wrap.innerHTML = `
-      <div class="wiz-backdrop"></div>
-      <div class="wiz-card">
-        <div class="wiz-head">Let’s set you up</div>
-        <div class="wiz-body"></div>
-        <div class="wiz-foot">
-          <button class="btn-secondary" id="wiz_prev">Back</button>
-          <button class="btn" id="wiz_next">Next</button>
-        </div>
-      </div>`;
-    document.body.appendChild(wrap);
-    document.body.classList.add('modal-open');
-
-    const steps = [stepBank, stepPayday, stepHours, stepBills, stepOneOffs];
-    let i = 0;
-    const body = wrap.querySelector('.wiz-body');
-    const prev = wrap.querySelector('#wiz_prev');
-    const next = wrap.querySelector('#wiz_next');
-
-    function render() {
-      body.innerHTML = '';
-      steps[i](body);
-      prev.style.visibility = (i === 0) ? 'hidden' : 'visible';
-      next.textContent = (i === steps.length - 1) ? 'Finish' : 'Next';
-    }
-    prev.onclick = ()=>{ if (i>0) { i--; render(); } };
-    next.onclick = ()=>{ if (i < steps.length - 1) i++; else close(); render(); };
-    render();
+  function seedState(){
+    return {
+      version: 'v15.9.0',
+      bank: 0,
+      payday: 5, // Fri
+      buckets: [],
+      bills: [],
+      ones: [],
+      debts: [],
+      pay: { base: 0, otMult: 1.5, withheld: 0.2, reg: 40, ot: 0 },
+      feedbackUrl: 'https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec'
+    };
   }
-  function close() {
-    const w = $('#wizard');
-    if (w) { w.remove(); document.body.classList.remove('modal-open'); }
-    localStorage.setItem('ydb_wizard_seen', '1');
+  function saveState(state){
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
   }
 
-  // ---- steps ----
-  function stepBank(el) {
-    const bank = state.bank ?? 0;
-    el.innerHTML = `
-      <div class="wiz-section">
-        <h3>What’s in your account right now?</h3>
-        <input id="wiz_bank" class="input allow-negative" type="number" inputmode="decimal" placeholder="e.g., 240" value="${bank}">
-      </div>
-      <div class="muted small">Tip: You can enter negative if you’re overdrawn.</div>
-    `;
-    el.querySelector('#wiz_bank').addEventListener('change', (e)=>{
-      state.bank = +e.target.value || 0; save(state);
-    });
-  }
+  function openWizard(){
+    if (document.querySelector('#ydb-wizard-overlay')) return;
 
-  function stepPayday(el) {
-    const cadence = state.settings?.payday?.cadence || 'weekly';
-    const weekday = state.settings?.payday?.weekday ?? 5;
-    const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    // Overlay (inline styles so it works even if CSS misses)
+    const overlay = document.createElement('div');
+    overlay.id = 'ydb-wizard-overlay';
+    overlay.setAttribute('style',
+      'position:fixed;inset:0;z-index:9999;'+
+      'background:rgba(0,0,0,.7);backdrop-filter:blur(6px);'+
+      'display:flex;align-items:center;justify-content:center;'
+    );
 
-    el.innerHTML = `
-      <div class="wiz-section">
-        <h3>When do you get paid?</h3>
-        <div class="pill-row payday-cadence">
-          <button class="pill ${cadence==='weekly'?'active':''}" data-cad="weekly">Weekly</button>
-          <button class="pill ${cadence==='biweekly'?'active':''}" data-cad="biweekly">Bi-weekly</button>
-        </div>
-        <div class="pill-row payday-weekday" style="margin-top:8px">
-          ${wd.map((n,idx)=>`<button class="pill ${idx===weekday?'active':''}" data-wd="${idx}">${n}</button>`).join('')}
-        </div>
-        <div class="muted small" style="margin-top:8px">Heads up: your Friday paycheck funds next week (Sat–Thu).</div>
+    // Card
+    const card = document.createElement('div');
+    card.setAttribute('style',
+      'width:90%;max-width:420px;'+
+      'background:#111f2a;border:1px solid #173241;'+
+      'border-radius:20px;padding:18px;color:#eaf6ff;'+
+      'box-shadow:0 10px 30px rgba(0,0,0,.45);'
+    );
+    card.innerHTML = `
+      <div style="font-weight:800;font-size:22px;margin-bottom:10px;">Let’s set you up</div>
+
+      <label style="display:block;color:#9ab0bf;font-size:12px;">What’s in your account right now?</label>
+      <input id="wizBank" inputmode="decimal" placeholder="0"
+             style="width:100%;border-radius:12px;padding:10px 12px;background:#0f202b;color:#eaf6ff;border:1px solid #214252;outline:none;margin-top:6px" />
+      <div style="margin-top:6px;color:#9ab0bf;font-size:12px;">Tip: You can enter negative if you’re overdrawn.</div>
+
+      <label style="display:block;color:#9ab0bf;font-size:12px;margin-top:12px">Payday weekday</label>
+      <select id="wizDay"
+              style="width:100%;border-radius:12px;padding:10px 12px;background:#0f202b;color:#eaf6ff;border:1px solid #214252;outline:none;margin-top:6px">
+        <option value="0">Sun</option><option value="1">Mon</option><option value="2">Tue</option>
+        <option value="3">Wed</option><option value="4">Thu</option><option value="5" selected>Fri</option>
+        <option value="6">Sat</option>
+      </select>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button id="wizCancel"
+                style="background:#133543;color:#cbe7f5;border:1px solid #235164;padding:10px 12px;border-radius:12px;cursor:pointer">
+          Cancel
+        </button>
+        <button id="wizSave"
+                style="background:#15b3c5;color:#07262d;font-weight:800;border:none;padding:12px 14px;border-radius:14px;cursor:pointer">
+          Save
+        </button>
       </div>
     `;
-    el.querySelectorAll('.payday-cadence .pill').forEach(b=>{
-      b.onclick = ()=>{
-        const cad = b.getAttribute('data-cad');
-        state.settings = state.settings || {}; state.settings.payday = state.settings.payday || {};
-        state.settings.payday.cadence = cad; save(state);
-        window.YDB && window.YDB.savePaydayFromWizard(cad, state.settings.payday.weekday ?? 5);
-        stepPayday(el);
-      };
-    });
-    el.querySelectorAll('.payday-weekday .pill').forEach(b=>{
-      b.onclick = ()=>{
-        const wd = +b.getAttribute('data-wd');
-        state.settings = state.settings || {}; state.settings.payday = state.settings.payday || { cadence:'weekly' };
-        state.settings.payday.weekday = wd; save(state);
-        window.YDB && window.YDB.savePaydayFromWizard(state.settings.payday.cadence || 'weekly', wd);
-        stepPayday(el);
-      };
-    });
-  }
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
 
-  function stepHours(el) {
-    const s = state.settings || (state.settings = {});
-    const base = s.baseRate ?? 20;
-    const otm = s.otMultiplier ?? 1.5;
-    const reg = s.regHours ?? 40;
-    const oth = s.otHours ?? 0;
-    const wh  = s.withholding ?? 0.2;
+    // Wire buttons
+    document.getElementById('wizCancel').onclick = ()=> overlay.remove();
+    document.getElementById('wizSave').onclick = ()=>{
+      const bank = parseFloat(document.getElementById('wizBank').value || '0') || 0;
+      let payday = parseInt(document.getElementById('wizDay').value, 10);
+      if (isNaN(payday) || payday < 0 || payday > 6) payday = 5;
 
-    el.innerHTML = `
-      <div class="wiz-section">
-        <h3>Hours & Pay</h3>
-        <label>Base hourly</label>
-        <input id="wiz_base" class="input" type="number" inputmode="decimal" value="${base}">
-        <label>OT multiplier</label>
-        <select id="wiz_otm" class="input">
-          <option ${otm==1.5?'selected':''} value="1.5">1.5× (standard)</option>
-          <option ${otm==2?'selected':''} value="2">2×</option>
-          <option ${otm==1?'selected':''} value="1">No OT</option>
-        </select>
-        <label>Regular hours</label>
-        <input id="wiz_reg" class="input" type="number" inputmode="decimal" value="${reg}">
-        <label>OT hours</label>
-        <input id="wiz_oth" class="input" type="number" inputmode="decimal" value="${oth}">
-        <label>Withholding (0–1)</label>
-        <input id="wiz_wh" class="input" type="number" inputmode="decimal" step="0.001" value="${(Math.round(wh*1000)/1000)}">
-      </div>
-    `;
-    el.querySelector('#wiz_base').onchange = e => { state.settings.baseRate = +e.target.value || 0; save(state); };
-    el.querySelector('#wiz_otm').onchange  = e => { state.settings.otMultiplier = +e.target.value || 1.5; save(state); };
-    el.querySelector('#wiz_reg').onchange  = e => { state.settings.regHours = +e.target.value || 0; save(state); };
-    el.querySelector('#wiz_oth').onchange  = e => { state.settings.otHours = +e.target.value || 0; save(state); };
-    el.querySelector('#wiz_wh').onchange   = e => { state.settings.withholding = +e.target.value || 0; save(state); };
-  }
+      const s = loadState() || seedState();
+      s.bank = bank;
+      s.payday = payday;
+      saveState(s);
 
-  function stepBills(el) {
-    const bills = state.bills || (state.bills = []);
-    el.innerHTML = `
-      <div class="wiz-section">
-        <h3>Sh*t That Must Get Paid</h3>
-        <div class="grid2">
-          <input id="wiz_bill_name" class="input" placeholder="e.g., Rent">
-          <input id="wiz_bill_amt"  class="input" type="number" inputmode="decimal" placeholder="Amount">
-          <input id="wiz_bill_day"  class="input" type="number" inputmode="numeric" placeholder="Due day (1–31)">
-          <button id="wiz_bill_add" class="btn">${bills.length ? 'Add another' : 'Add bill'}</button>
-        </div>
-        <div id="wiz_bill_list" class="list small"></div>
-      </div>
-    `;
-    const list = el.querySelector('#wiz_bill_list');
-    function paint() {
-      list.innerHTML = bills.map(b=>`<div>${b.name} — $${(+b.amount||0).toFixed(2)} (day ${b.dueDay})</div>`).join('') || `<div class="muted">None yet.</div>`;
-      el.querySelector('#wiz_bill_add').textContent = bills.length ? 'Add another' : 'Add bill';
-    }
-    paint();
-    el.querySelector('#wiz_bill_add').onclick = ()=>{
-      const name = el.querySelector('#wiz_bill_name').value.trim();
-      const amt  = +el.querySelector('#wiz_bill_amt').value || 0;
-      const day  = +el.querySelector('#wiz_bill_day').value || 1;
-      if (!name) return;
-      bills.push({ id: crypto.randomUUID(), name, amount: amt, dueDay: day });
-      save(state); paint();
-      el.querySelector('#wiz_bill_name').value='';
-      el.querySelector('#wiz_bill_amt').value='';
-      el.querySelector('#wiz_bill_day').value='';
+      // Reflect in Settings fields (if present now)
+      try { const bb = document.getElementById('bankBal'); if (bb) bb.value = bank; } catch {}
+      try { const pd = document.getElementById('payday'); if (pd) pd.value = String(payday); } catch {}
+
+      overlay.remove();
+      // Force main app to reload and recalc using the updated state
+      location.reload();
     };
   }
 
-  function stepOneOffs(el) {
-    const offs = state.oneOffs || (state.oneOffs = []);
-    el.innerHTML = `
-      <div class="wiz-section">
-        <h3>Catch-Up Sh*t (one-offs)</h3>
-        <div class="grid2">
-          <input id="wiz_off_name" class="input" placeholder="e.g., Last month electric">
-          <input id="wiz_off_amt"  class="input" type="number" inputmode="decimal" placeholder="Amount">
-          <input id="wiz_off_date" class="input" type="date">
-          <label class="row"><input id="wiz_off_defer" type="checkbox" checked> Defer to next week if needed</label>
-          <button id="wiz_off_add" class="btn">${offs.length ? 'Add another' : 'Add item'}</button>
-        </div>
-        <div id="wiz_off_list" class="list small"></div>
-      </div>
-    `;
-    const list = el.querySelector('#wiz_off_list');
-    function paint() {
-      list.innerHTML = offs.map(o=>`<div>${o.name} — $${(+o.amount||0).toFixed(2)} (${o.dateISO || 'no date'}) ${o.defer?'<span class="pill">defer</span>':''}</div>`).join('') || `<div class="muted">None yet.</div>`;
-      el.querySelector('#wiz_off_add').textContent = offs.length ? 'Add another' : 'Add item';
+  // Expose to window (without clobbering if app.js already defined it)
+  if (!window.openWizard) window.openWizard = openWizard;
+
+  // Wire settings button on load (id: #runWizard exists in v15.9)
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btn = document.getElementById('runWizard');
+    if (btn && !btn.dataset.ydbWizardBound){
+      btn.dataset.ydbWizardBound = '1';
+      btn.addEventListener('click', openWizard);
     }
-    paint();
-    el.querySelector('#wiz_off_add').onclick = ()=>{
-      const name = el.querySelector('#wiz_off_name').value.trim();
-      const amt  = +el.querySelector('#wiz_off_amt').value || 0;
-      const date = el.querySelector('#wiz_off_date').value || null;
-      const def  = el.querySelector('#wiz_off_defer').checked;
-      if (!name || !date) return;
-      offs.push({ id: crypto.randomUUID(), name, amount: amt, dateISO: date, defer: !!def, includeThisWeek: !def });
-      save(state); paint();
-      el.querySelector('#wiz_off_name').value='';
-      el.querySelector('#wiz_off_amt').value='';
-      el.querySelector('#wiz_off_date').value='';
-      el.querySelector('#wiz_off_defer').checked=true;
-    };
-  }
-
-  window.YDB = window.YDB || {};
-  window.YDB.openWizard = open;
-
-  document.addEventListener('DOMContentLoaded', openWizardIfNeeded);
+  });
 })();
+```0
