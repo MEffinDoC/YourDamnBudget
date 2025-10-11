@@ -1,9 +1,7 @@
-<!-- /wizard.js -->
-<script>
-/* Your Damn Budget — Wizard v16.0.0 (adds payday step; keeps clean card look)
-   - Steps: Bank → Payday → Hours → Bills → One-offs
-   - "Add bill" label correct on first entry
-   - Inputs allow negative for bank
+/* Your Damn Budget — Wizard v16.0.0 (adds payday step)
+   Steps: Bank → Payday → Hours → Bills → One-offs
+   - “Add bill” for first item; “Add another” afterwards
+   - Bank allows negative
 */
 (function () {
   const $ = s => document.querySelector(s);
@@ -11,11 +9,9 @@
   const save = (s)=> localStorage.setItem('ydb_state', JSON.stringify(s));
 
   function openWizardIfNeeded() {
-    // show if fresh or user taps "Run Setup" in Settings (call YDB.openWizard())
     const seen = localStorage.getItem('ydb_wizard_seen');
     if (!seen) open();
   }
-
   function open() {
     const wrap = document.createElement('div');
     wrap.id = 'wizard';
@@ -45,14 +41,9 @@
       next.textContent = (i === steps.length - 1) ? 'Finish' : 'Next';
     }
     prev.onclick = ()=>{ if (i>0) { i--; render(); } };
-    next.onclick = ()=>{ 
-      // allow moving freely; each step saves its own fields
-      if (i < steps.length - 1) i++; else close();
-      render();
-    };
+    next.onclick = ()=>{ if (i < steps.length - 1) i++; else close(); render(); };
     render();
   }
-
   function close() {
     const w = $('#wizard');
     if (w) { w.remove(); document.body.classList.remove('modal-open'); }
@@ -61,9 +52,7 @@
 
   // ---- steps ----
   function stepBank(el) {
-    const s = state;
-    const bank = s.bank ?? 0;
-    const payday = (s.settings?.payday?.weekday ?? 5);
+    const bank = state.bank ?? 0;
     el.innerHTML = `
       <div class="wiz-section">
         <h3>What’s in your account right now?</h3>
@@ -77,9 +66,8 @@
   }
 
   function stepPayday(el) {
-    const s = state;
-    const cadence = s.settings?.payday?.cadence || 'weekly';
-    const weekday = s.settings?.payday?.weekday ?? 5;
+    const cadence = state.settings?.payday?.cadence || 'weekly';
+    const weekday = state.settings?.payday?.weekday ?? 5;
     const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
     el.innerHTML = `
@@ -89,7 +77,6 @@
           <button class="pill ${cadence==='weekly'?'active':''}" data-cad="weekly">Weekly</button>
           <button class="pill ${cadence==='biweekly'?'active':''}" data-cad="biweekly">Bi-weekly</button>
         </div>
-
         <div class="pill-row payday-weekday" style="margin-top:8px">
           ${wd.map((n,idx)=>`<button class="pill ${idx===weekday?'active':''}" data-wd="${idx}">${n}</button>`).join('')}
         </div>
@@ -219,10 +206,8 @@
     };
   }
 
-  // expose manual opener from Settings
   window.YDB = window.YDB || {};
   window.YDB.openWizard = open;
 
   document.addEventListener('DOMContentLoaded', openWizardIfNeeded);
 })();
-</script>
