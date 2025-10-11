@@ -2,13 +2,333 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content=<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Your Damn Budget</title>
 
-  <!-- PWA / Icons -->
-  <link rel="manifest" href="/YourDamnBudget/manifest.webmanifest">
-  <link rel="icon" sizes="192x192" href="/YourDamnBudget/icons/flat-192.png">
-  <link rel="apple-touch-icon" href="/YourDamnBudget/icons/flat-192.png">
+  <link rel="manifest" href="manifest.webmanifest?v=1602" />
+  <meta name="theme-color" content="#0c1a24" />
+  <link rel="apple-touch-icon" href="icons/flat-192.png" />
+
+  <link rel="stylesheet" href="styles.css?v=1602" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-coin">$</span>
+    <h1>Your Damn Budget</h1>
+  </div>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="#homePage" class="tab active">
+      <span>Home</span><small>Reality</small>
+    </button>
+    <button data-tab="#crystalPage" class="tab">
+      <span>Crystal Ball</span><small>12-week</small>
+    </button>
+    <button data-tab="#hoursPage" class="tab">
+      <span>Hours</span><small>Paycheck</small>
+    </button>
+    <button data-tab="#billsPage" class="tab">
+      <span>Shit That Must Get Paid</span><small>bills & housing</small>
+    </button>
+    <button data-tab="#oneoffPage" class="tab">
+      <span>Catch-Up Sh*t</span><small>IOUs & one-offs</small>
+    </button>
+    <button data-tab="#debtsPage" class="tab">
+      <span>Your Damn Debts</span><small>loans</small>
+    </button>
+    <button data-tab="#donatePage" class="tab">
+      <span>Donate</span><small>optional</small>
+    </button>
+    <button data-tab="#feedbackPage" class="tab">
+      <span>Feedback</span><small>ideas & bugs</small>
+    </button>
+    <button data-tab="#settingsPage" class="tab">
+      <span>Settings</span><small>tweaks</small>
+    </button>
+  </nav>
+</header>
+
+<main id="pages">
+  <!-- Top banner slot -->
+  <section class="banner" id="bannerTop">Top banner</section>
+
+  <!-- HOME -->
+  <section class="page active" id="homePage">
+    <div class="card">
+      <div class="card-title">Weekly Damage Report</div>
+      <div class="muted" id="home_periodChip"></div>
+
+      <div class="kv">
+        <div class="k">Cash This Week</div>
+        <div class="v big" id="home_cashThisWeek">$0.00</div>
+      </div>
+
+      <details class="breakdown">
+        <summary>Show breakdown</summary>
+        <div id="home_breakdown"></div>
+      </details>
+
+      <div class="kv">
+        <div class="k">F*ck Around Funds</div>
+        <div class="v" id="home_faf">$0.00</div>
+      </div>
+
+      <div class="kv">
+        <div class="k">After Damage</div>
+        <div class="v big" id="home_afterDamage">$0.00</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Due this pay period</div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th>Date</th><th>What</th><th class="right">$</th><th class="right">Paid</th></tr>
+          </thead>
+          <tbody id="home_dueTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Can I afford this?</div>
+      <div class="form-grid">
+        <label>Amount
+          <input id="afford_amount" class="input" inputmode="decimal" placeholder="e.g., 49.99" />
+        </label>
+        <label>Date
+          <input id="afford_date" class="input" type="date" />
+        </label>
+      </div>
+      <button id="afford_btn" class="btn">Ask my damn budget</button>
+      <div id="afford_result" class="afford"></div>
+    </div>
+  </section>
+
+  <!-- CRYSTAL BALL -->
+  <section class="page" id="crystalPage">
+    <div class="card">
+      <div class="card-title">12-week snapshot</div>
+      <div class="kv"><div class="k">Est. Income</div><div class="v" id="cb_income">$0.00</div></div>
+      <div class="kv"><div class="k">Buckets + FAF</div><div class="v" id="cb_buckets">$0.00</div></div>
+      <div class="kv"><div class="k">Projected Left</div><div class="v big" id="cb_left">$0.00</div></div>
+    </div>
+  </section>
+
+  <!-- HOURS -->
+  <section class="page" id="hoursPage">
+    <div class="card">
+      <div class="card-title">Hours & Paycheck</div>
+
+      <label>Base hourly
+        <input id="hours_base" class="input" inputmode="decimal" type="number" />
+      </label>
+
+      <label>OT multiplier
+        <select id="hours_otmult" class="input">
+          <option value="1.5">1.5× (standard)</option>
+          <option value="2">2×</option>
+          <option value="1">No OT</option>
+        </select>
+      </label>
+
+      <label>Withholding (auto or manual)
+        <input id="hours_withholding" class="input" step="0.001" inputmode="decimal" type="number" />
+      </label>
+
+      <div class="form-grid">
+        <label>Regular hours
+          <input id="hours_reg" class="input" inputmode="decimal" type="number" />
+        </label>
+        <label>OT hours
+          <input id="hours_ot" class="input" inputmode="decimal" type="number" />
+        </label>
+      </div>
+
+      <button id="hours_save" class="btn">Save hours</button>
+
+      <div class="kv"><div class="k">Est. Gross / week</div><div class="v" id="hours_gross">$0.00</div></div>
+      <div class="kv"><div class="k">Est. Net / week</div><div class="v" id="hours_net">$0.00</div></div>
+      <div class="kv"><div class="k">Withholding</div><div class="v" id="hours_withhold_pct">0%</div></div>
+    </div>
+  </section>
+
+  <!-- BILLS -->
+  <section class="page" id="billsPage">
+    <div class="card">
+      <div class="card-title">Shit That Must Get Paid</div>
+      <div class="form-grid">
+        <label>Name <input id="b_name" class="input" placeholder="e.g., Rent" /></label>
+        <label>Amount <input id="b_amt" class="input" inputmode="decimal" type="number" placeholder="1200" /></label>
+        <label>Due day (1–31) <input id="b_day" class="input" inputmode="numeric" type="number" min="1" max="31" /></label>
+      </div>
+      <button id="bills_addBtn" class="btn">Add bill</button>
+
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th class="right">$</th><th class="right">Due day</th><th class="right">Delete</th></tr></thead>
+          <tbody id="bills_body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ONE-OFFS -->
+  <section class="page" id="oneoffPage">
+    <div class="card">
+      <div class="card-title">Catch-Up Sh*t (one-offs)</div>
+      <div class="form-grid">
+        <label>Name <input id="o_name" class="input" placeholder="e.g., Last month electric" /></label>
+        <label>Amount <input id="o_amt" class="input" inputmode="decimal" type="number" /></label>
+        <label>Date <input id="o_date" class="input" type="date" /></label>
+      </div>
+      <label class="row"><input id="o_defer" type="checkbox" checked /> Defer to next week if needed</label>
+      <button id="o_add" class="btn">Add item</button>
+
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Date</th><th>What</th><th class="right">$</th><th class="right">In this week?</th><th class="right">Delete</th></tr></thead>
+          <tbody id="oneoff_body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEBTS (simple list using same monthly model as bills) -->
+  <section class="page" id="debtsPage">
+    <div class="card">
+      <div class="card-title">Your Damn Debts</div>
+      <div class="form-grid">
+        <label>Name <input id="d_name" class="input" placeholder="e.g., Car loan" /></label>
+        <label>Amount <input id="d_amt" class="input" inputmode="decimal" type="number" /></label>
+        <label>Due day (1–31) <input id="d_day" class="input" inputmode="numeric" type="number" min="1" max="31" /></label>
+      </div>
+      <button id="d_add" class="btn">Add debt</button>
+
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Name</th><th class="right">$</th><th class="right">Due day</th><th class="right">Delete</th></tr></thead>
+          <tbody id="debts_body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- DONATE -->
+  <section class="page" id="donatePage">
+    <div class="card">
+      <div class="card-title">Donate (optional)</div>
+      <a class="cta paypal" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener">PayPal</a>
+      <a class="cta cashapp" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener">Cash App</a>
+      <p class="muted small">Donations are appreciated, but they never unlock features and aren’t required.</p>
+    </div>
+  </section>
+
+  <!-- FEEDBACK -->
+  <section class="page" id="feedbackPage">
+    <div class="card">
+      <div class="card-title">Feedback</div>
+
+      <label>Type
+        <select id="fb_type" class="input">
+          <option>Idea</option>
+          <option>Bug</option>
+          <option>Question</option>
+        </select>
+      </label>
+
+      <label>Message
+        <textarea id="fb_msg" class="input" rows="6" placeholder="Tell us what rules, what sucks, or what broke…"></textarea>
+      </label>
+
+      <div class="row">
+        <label class="row"><input id="fb_includeMeta" type="checkbox" checked /> Include app version and device info</label>
+        <label class="row"><input id="fb_anon" type="checkbox" /> Send anonymously (ignore name/email)</label>
+      </div>
+
+      <button id="fb_send" class="btn">Send Feedback</button>
+      <button id="fb_email" class="btn-secondary">Email instead</button>
+      <button id="fb_copy" class="btn-secondary">Copy to clipboard</button>
+
+      <div id="fb_toast" class="toast"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="page" id="settingsPage">
+    <div class="card">
+      <div class="card-title">Settings</div>
+
+      <label>Bank balance (can be negative)
+        <input id="settings_bank" class="input allow-negative" inputmode="decimal" type="number" />
+      </label>
+
+      <div class="group">
+        <div class="label">Payday cadence</div>
+        <div class="pill-row payday-cadence">
+          <button class="pill" data-cad="weekly">Weekly</button>
+          <button class="pill" data-cad="biweekly">Bi-weekly</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Payday weekday</div>
+        <div class="pill-row payday-weekday">
+          <button class="pill" data-wd="0">Sun</button>
+          <button class="pill" data-wd="1">Mon</button>
+          <button class="pill" data-wd="2">Tue</button>
+          <button class="pill" data-wd="3">Wed</button>
+          <button class="pill" data-wd="4">Thu</button>
+          <button class="pill" data-wd="5">Fri</button>
+          <button class="pill" data-wd="6">Sat</button>
+        </div>
+      </div>
+
+      <label>F*ck Around Funds (weekly)
+        <input id="settings_faf" class="input" inputmode="decimal" type="number" />
+      </label>
+    </div>
+
+    <div class="small muted center">YDB <span id="app_version">v16.0.1</span></div>
+  </section>
+
+  <!-- Bottom banner slot -->
+  <section class="banner" id="bannerBottom">Bottom banner</section>
+</main>
+
+<script src="app.js?v=1602"></script>
+<script src="wizard.js?v=1602"></script>
+<script>
+  // Tab switching (SPA-style)
+  const tabbar = document.getElementById('tabbar');
+  tabbar.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button.tab');
+    if (!btn) return;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const sel = btn.getAttribute('data-tab');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const page = document.querySelector(sel);
+    if (page) page.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+
+  // PWA: register SW
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', ()=> {
+      navigator.serviceWorker.register('sw.js?v=1602');
+    });
+  }
+</script>
+</body>
+</html>
   <meta name="theme-color" content="#081826">
 
   <!-- Styles -->
