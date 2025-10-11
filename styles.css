@@ -1,280 +1,107 @@
-:root {
-  --bg: #0b1620;
-  --panel: #102331;
-  --text: #e6f3ff;
-  --muted: #9bb3c5;
-  --accent: #16bac5;
-  --accent2: #1f8ef1;
-  --ok: #1fbf75;
-  --neg: #ff4d4d;
+:root{
+  --bg:#0b1620;
+  --card:#111f2a;
+  --ink:#eaf6ff;
+  --muted:#9ab0bf;
+  --accent:#15b3c5;
+  --accent-2:#133a43;
+  --danger:#ff5b5b;
+  --good:#39d98a;
+  --pill:#0e2a33;
 }
 
-/* Reset and base */
-* {
-  box-sizing: border-box;
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.45 system-ui, Segoe UI, Roboto, Arial, sans-serif;
+/* header */
+.app-header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#0d1b26,transparent);padding:10px 16px 4px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-coin{width:28px;height:28px;display:grid;place-items:center;border-radius:10px;background:#0f2c39;color:#33d5ff;font-weight:800}
+.brand-title{font-weight:800;font-size:20px}
+
+/* banners */
+.banner{margin:10px 16px;padding:16px;border-radius:14px;background:#142633;color:#9fb3c3;border:1px dashed #264555;text-align:center}
+.banner.top{margin-top:8px}
+
+/* tabbar */
+.tabbar{
+  display:flex; gap:10px; padding:6px 16px 10px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x mandatory;
+}
+.tab{
+  scroll-snap-align:start;
+  flex:0 0 auto; min-width:180px; max-width:260px;
+  border-radius:18px; padding:12px 16px; background:var(--pill); color:var(--ink);
+  border:1px solid #1f3d49;
+}
+.tab .t{font-weight:700}
+.tab small{display:block;color:var(--muted)}
+.tab.active{outline:2px solid var(--accent); box-shadow:inset 0 0 0 2px #0abbd1}
+.tab:active{transform:translateY(1px)}
+
+/* layout */
+#pages{padding:0 16px 80px}
+.page{display:none}
+.page.active{display:block}
+.card{
+  background:var(--card); border:1px solid #173241; border-radius:18px; padding:16px; margin:12px 0;
+  box-shadow:0 4px 20px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.02);
+}
+.card-title{font-weight:800;font-size:22px;margin-bottom:10px}
+
+.kv{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0}
+.kv .k{color:var(--muted)}
+.kv .v{font-weight:700}
+.big{font-size:22px}
+.pos{color:var(--good)}
+.neg{color:var(--danger)}
+.small{font-size:12px}
+.muted{color:var(--muted)}
+
+/* inputs */
+input,select,textarea{
+  width:100%; border-radius:12px; padding:10px 12px; background:#0f202b; color:var(--ink);
+  border:1px solid #214252; outline:none;
+}
+input::placeholder,textarea::placeholder{color:#6d8696}
+textarea{resize:vertical}
+
+/* form grid */
+.form-grid{display:grid;grid-template-columns:1fr 1fr; gap:10px}
+@media (max-width:520px){.form-grid{grid-template-columns:1fr}}
+
+.btn{
+  background:var(--accent); color:#07262d; font-weight:800; border:none; padding:12px 14px; border-radius:14px;
+}
+.btn-secondary{
+  background:#133543; color:#cbe7f5; border:1px solid #235164; padding:10px 12px; border-radius:12px;
 }
 
-small { opacity: 0.8; }
-.muted { color: var(--muted); }
-.small { font-size: 0.85rem; }
-.center { text-align: center; }
+/* tables */
+.table-wrap{overflow:auto}
+.tbl{width:100%; border-collapse:collapse}
+.tbl th,.tbl td{padding:10px;border-bottom:1px solid #183243}
+.tbl th{color:#9fb3c3;text-align:left;font-weight:600}
+.tbl .right{text-align:right}
 
-/* Header + branding */
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: linear-gradient(180deg, #0f2433, #0b1620);
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* donate CTAs */
+.cta{
+  display:block; text-align:center; padding:14px 16px; border-radius:14px; font-weight:800; margin:10px 0;
+  color:#fff; text-decoration:none;
 }
+.cta.paypal{background:#1f3bd6}
+.cta.cashapp{background:#00d66b}
+.cta:active{transform:translateY(1px)}
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+/* wizard toggle + checks */
+.wiz.check{display:flex;align-items:center;gap:10px}
+.wiz.check input{width:auto}
 
-.brand-coin {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  background: #0b2030;
-  border-radius: 12px;
-  color: #17b1ff;
-  font-weight: 800;
-}
-
-/* Fix name overlap */
-.brand-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: calc(100vw - 84px);
-}
-
-/* Tabs / Nav */
-.tabbar {
-  display: flex;
-  gap: 0.75rem;
-  overflow-x: auto;
-  padding: 0 12px 12px;
-  scroll-snap-type: x mandatory;
-}
-
-.tab {
-  scroll-snap-align: start;
-  flex-shrink: 0;
-  min-width: 220px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid #214455;
-  background: var(--panel);
-  color: var(--text);
-  text-align: left;
-  transition: background 0.15s ease, outline 0.15s ease;
-}
-
-.tab small {
-  display: block;
-  color: var(--muted);
-}
-
-.tab.active {
-  outline: 2px solid var(--accent);
-  background: #0d2a3b;
-}
-
-/* Layout */
-main {
-  padding: 12px;
-  display: grid;
-  gap: 14px;
-}
-
-/* Banners (ads placeholders) */
-.banner {
-  border: 1px dashed #2b4d63;
-  border-radius: 16px;
-  background: var(--panel);
-  padding: 20px;
-  text-align: center;
-  color: var(--muted);
-  margin: 8px 0;
-}
-
-/* Pages */
-.page { display: none; }
-.page.active { display: block; }
-
-/* Cards */
-.card {
-  background: var(--panel);
-  border-radius: 20px;
-  padding: 18px;
-  border: 1px solid #203847;
-  box-shadow: 0 1px 0 #0b1821 inset;
-}
-
-.card-title {
-  font-size: 1.4rem;
-  font-weight: 800;
-  margin-bottom: 10px;
-}
-
-/* Key value pairs */
-.kv {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin: 10px 0;
-}
-
-.kv .k { color: var(--muted); }
-.kv .v.big { font-size: 1.6rem; font-weight: 800; }
-.pos { color: var(--ok); }
-.neg { color: var(--neg); }
-
-/* Tables */
-.table-wrap {
-  overflow: auto;
-  border-radius: 12px;
-  border: 1px solid #203847;
-}
-
-.tbl {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.tbl th, .tbl td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #173040;
-}
-
-.tbl th {
-  background: #102839;
-  color: var(--muted);
-}
-
-.tbl th.right, .tbl td.right { text-align: right; }
-
-/* Inputs */
-input, textarea, select {
-  width: 100%;
-  background: #0e2130;
-  border: 1px solid #24485b;
-  color: var(--text);
-  border-radius: 12px;
-  padding: 10px 12px;
-  outline: none;
-}
-
-input:focus, textarea:focus, select:focus {
-  border-color: #2db4d0;
-  box-shadow: 0 0 0 2px #174b59 inset;
-}
-
-/* Buttons */
-.btn {
-  background: var(--accent);
-  border: 0;
-  color: #001018;
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn:active { transform: translateY(1px); }
-
-.btn-secondary {
-  background: #113247;
-  border: 1px solid #265469;
-  color: #cde8ff;
-  border-radius: 16px;
-  padding: 10px 12px;
-}
-
-/* Grid for forms */
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-@media (max-width: 480px) {
-  .form-grid { grid-template-columns: 1fr; }
-}
-
-/* CTA buttons for donate page */
-.cta {
-  display: block;
-  text-align: center;
-  border-radius: 14px;
-  padding: 14px 12px;
-  margin: 8px 0;
-  font-weight: 800;
-  color: #021018;
-  text-decoration: none;
-}
-
-.cta.paypal { background: #2c55e2; }
-.cta.cashapp { background: #00d06e; color: #00371f; }
-
-/* Wizard overlay + inputs */
-.wizard-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(6px);
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.wizard-box {
-  background: var(--panel);
-  border-radius: 24px;
-  width: 90%;
-  max-width: 420px;
-  padding: 24px;
-  box-shadow: 0 0 16px rgba(0,0,0,0.4);
-}
-
-/* Wizard checkbox fix */
-.wiz .check { display:flex; align-items:center; gap:.75rem; }
-.wiz input[type="checkbox"]{
-  appearance:none; -webkit-appearance:none;
-  width:22px; height:22px; border-radius:6px;
-  background:#0e2130; border:1.5px solid #2db4d0; position:relative;
-}
-.wiz input[type="checkbox"]:checked{
-  background:#16bac5; border-color:#16bac5;
-}
-.wiz input[type="checkbox"]:checked::after{
-  content:"✓"; position:absolute; inset:0;
-  display:grid; place-items:center; color:#00222b; font-weight:900; font-size:14px;
-}
-
-/* Footer version text */
-footer {
-  text-align: center;
-  padding: 20px 0 60px;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
+/* footer */
+.foot{color:#8ea5b6;text-align:center;margin:24px 0}
