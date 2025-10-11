@@ -1,61 +1,64 @@
-// YDB SW — v15.9.0 (stable, safe updates)
-const CACHE_STATIC = 'ydb-static-v1590';
-const ASSETS = [
+// YDB SW — v15.9.0 (store-friendly, no query strings)
+// Strategy: Stale-While-Revalidate for a short, safe core list.
+// No ?v=... anywhere; cache name bump controls updates.
+
+const CACHE_NAME = 'ydb-v15-9-0';
+const CORE_ASSETS = [
   './',
   './index.html',
-  './styles.css?v=15.9.0',
-  './app.js?v=15.9.0',
-  './wizard.js?v=15.9.0',
+  './styles.css',
+  './app.js',
+  './wizard.js',
   './manifest.webmanifest',
   './icons/flat-192.png',
-  './icons/flat-512.png'
+  './icons/flat-512.png',
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_STATIC).then((c) => c.addAll(ASSETS))
+// Install: pre-cache core assets
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
   );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
+// Activate: clean old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_STATIC).map((k) => caches.delete(k)))
+      Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
 });
 
-// Strategy:
-// - HTML/navigation: **network-first** (prevents stale app shell).
-// - Static assets with version query (?v=): **cache-first** (fast), but easy to bust by bumping ?v=.
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
+// Fetch: stale-while-revalidate
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
 
-  // If this is a navigation (HTML) request, do network-first.
-  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
-    e.respondWith(
-      fetch(req)
+  // Only handle GET
+  if (req.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const networkFetch = fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_STATIC).then((c) => c.put(req, copy));
+          // Update cache for same-origin successful responses
+          try {
+            const url = new URL(req.url);
+            if (res.ok && url.origin === location.origin) {
+              const clone = res.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+          } catch (_) {}
           return res;
         })
-        .catch(() => caches.match(req).then((r) => r || caches.match('./index.html')))
-    );
-    return;
-  }
+        .catch(() => cached); // fall back to cache when offline
 
-  // For other requests (CSS/JS/PNG/etc): cache-first.
-  e.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_STATIC).then((c) => c.put(req, copy));
-        return res;
-      });
+      // If we have a cached copy, serve it immediately and refresh in bg
+      return cached || networkFetch;
     })
   );
 });
