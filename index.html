@@ -2,301 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1924" />
   <title>Your Damn Budget</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="theme-color" content="#0b1620" />
-  <link rel="icon" href="./icons/flat-192.png" />
+  <link rel="manifest" href="./manifest.webmanifest?v=15.9.0" />
+  <link rel="icon" sizes="192x192" href="./icons/flat-192.png" />
   <link rel="apple-touch-icon" href="./icons/flat-192.png" />
-
   <link rel="stylesheet" href="./styles.css?v=15.9.0" />
 </head>
 <body>
-  <header class="app-header">
+  <header class="appbar">
     <div class="brand">
-      <div class="brand-coin">$</div>
-      <div class="brand-title">Your Damn Budget</div>
+      <span class="brand-glyph">$</span>
+      <span class="brand-title">Your Damn Budget</span>
     </div>
   </header>
 
-  <div class="banner top">Top banner</div>
+  <main id="app">
+    <section id="topBanner" class="banner card">Top banner</section>
 
-  <nav class="tabbar" id="tabbar">
-    <button class="tab active" data-page="home"><div class="t">Home</div><small>Reality</small></button>
-    <button class="tab" data-page="crystal"><div class="t">Crystal Ball</div><small>12-week</small></button>
-    <button class="tab" data-page="hours"><div class="t">Hours</div><small>Paycheck</small></button>
-    <button class="tab" data-page="must"><div class="t">Shit That Must Get Paid</div><small>bills & housing</small></button>
-    <button class="tab" data-page="catchup"><div class="t">Catch-Up Sh*t</div><small>one-offs & overdue</small></button>
-    <button class="tab" data-page="buckets"><div class="t">Where It Goes</div><small>buckets</small></button>
-    <button class="tab" data-page="debts"><div class="t">Your Damn Debts</div><small>loans & IOUs</small></button>
-    <button class="tab" data-page="donate"><div class="t">Donate</div><small>optional</small></button>
-    <button class="tab" data-page="feedback"><div class="t">Feedback</div><small>ideas & bugs</small></button>
-    <button class="tab" data-page="settings"><div class="t">Settings</div><small>tweaks</small></button>
-  </nav>
+    <!-- NAV -->
+    <nav class="tabs rail" id="tabs">
+      <button data-tab="home" class="tab active"><div>Home</div><small>Reality</small></button>
+      <button data-tab="forecast" class="tab"><div>Crystal Ball</div><small>12-week</small></button>
+      <button data-tab="hours" class="tab"><div>Hours</div><small>Paycheck</small></button>
+      <button data-tab="bills" class="tab"><div>Shit That Must Get Paid</div><small>bills & housing</small></button>
+      <button data-tab="catchup" class="tab"><div>Catch-Up Sh*t</div><small>one-offs & overdue</small></button>
+      <button data-tab="buckets" class="tab"><div>Where It Goes</div><small>buckets</small></button>
+      <button data-tab="debts" class="tab"><div>Your Damn Debts</div><small>loans & IOUs</small></button>
+      <button data-tab="donate" class="tab"><div>Donate</div><small>optional</small></button>
+      <button data-tab="feedback" class="tab"><div>Feedback</div><small>ideas & bugs</small></button>
+      <button data-tab="settings" class="tab"><div>Settings</div><small>tweaks</small></button>
+    </nav>
 
-  <main id="pages">
-    <!-- HOME -->
-    <section id="home" class="page active">
-      <div class="card">
-        <div class="card-title">Weekly Damage Report</div>
-        <div class="muted small" id="home-range"></div>
+    <!-- PAGES -->
+    <section id="page-home" class="page card"></section>
+    <section id="page-forecast" class="page card hidden"></section>
+    <section id="page-hours" class="page card hidden"></section>
+    <section id="page-bills" class="page card hidden"></section>
+    <section id="page-catchup" class="page card hidden"></section>
+    <section id="page-buckets" class="page card hidden"></section>
+    <section id="page-debts" class="page card hidden"></section>
+    <section id="page-donate" class="page card hidden"></section>
+    <section id="page-feedback" class="page card hidden"></section>
+    <section id="page-settings" class="page card hidden"></section>
 
-        <div class="kv"><div class="k">Cash This Week</div><div class="v big" id="cashThisWeek">$0.00</div></div>
-
-        <details>
-          <summary class="small">Show breakdown</summary>
-          <div class="small muted" id="cashBreakdown"></div>
-        </details>
-
-        <div class="kv"><div class="k">F*ck Around Funds</div><div class="v" id="faf">$50.00</div></div>
-        <div class="kv"><div class="k">After Damage</div><div class="v big neg" id="afterDamage">-$50.00</div></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Due this pay period</div>
-        <div class="table-wrap">
-          <table class="tbl" id="dueTable">
-            <thead><tr><th>Date</th><th>What</th><th class="right">$</th><th>Paid</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Can I afford this?</div>
-        <div class="form-grid">
-          <div>
-            <label class="small muted">Amount</label>
-            <input id="affordAmt" inputmode="decimal" placeholder="e.g., 49.99" />
-          </div>
-          <div>
-            <label class="small muted">Date</label>
-            <input id="affordDate" type="date" />
-          </div>
-        </div>
-        <div style="margin-top:12px"><button class="btn" id="affordAsk">Ask my damn budget</button></div>
-        <div class="small muted" id="affordResult" style="margin-top:8px"></div>
-      </div>
-    </section>
-
-    <!-- CRYSTAL -->
-    <section id="crystal" class="page">
-      <div class="card">
-        <div class="card-title">12-week snapshot</div>
-        <div class="kv"><div class="k">Est. Income</div><div class="v big" id="cwIncome">$0.00</div></div>
-        <div class="kv"><div class="k">Buckets + FAF</div><div class="v" id="cwBuckets">$0.00</div></div>
-        <div class="kv"><div class="k">Projected Left</div><div class="v big pos" id="cwLeft">$0.00</div></div>
-      </div>
-    </section>
-
-    <!-- HOURS -->
-    <section id="hours" class="page">
-      <div class="card">
-        <div class="card-title">Hours & Paycheck</div>
-
-        <label class="small muted">Base hourly</label>
-        <input id="payBase" inputmode="decimal" placeholder="20" />
-
-        <label class="small muted" style="margin-top:12px">OT multiplier</label>
-        <select id="otMult">
-          <option value="1.5">1.5× (standard)</option>
-          <option value="1.75">1.75×</option>
-          <option value="2">2×</option>
-        </select>
-
-        <label class="small muted" style="margin-top:12px">Withholding (auto or manual)</label>
-        <input id="withheld" inputmode="decimal" placeholder="0.2 for 20%" />
-
-        <div class="form-grid" style="margin-top:12px">
-          <div>
-            <label class="small muted">Regular hours</label>
-            <input id="hrsReg" inputmode="decimal" placeholder="40" />
-          </div>
-          <div>
-            <label class="small muted">OT hours</label>
-            <input id="hrsOT" inputmode="decimal" placeholder="0" />
-          </div>
-        </div>
-
-        <div style="margin-top:12px"><button class="btn" id="saveHours">Save hours</button></div>
-
-        <div class="kv" style="margin-top:12px"><div class="k">Est. Gross / week</div><div class="v big" id="grossW">$0.00</div></div>
-        <div class="kv"><div class="k">Est. Net / week</div><div class="v big" id="netW">$0.00</div></div>
-        <div class="kv"><div class="k">Withholding</div><div class="v" id="whPct">0.0%</div></div>
-
-        <label class="small muted" style="margin-top:12px">Example pay (gross)</label>
-        <input id="grossExample" inputmode="decimal" placeholder="e.g., 1280.00" />
-        <div style="margin-top:8px"><button class="btn-secondary" id="applyExample">Apply (infer withholding)</button></div>
-      </div>
-    </section>
-
-    <!-- MUST PAY -->
-    <section id="must" class="page">
-      <div class="card">
-        <div class="card-title">Shit That Must Get Paid</div>
-        <label class="small muted">Name</label>
-        <input id="billName" placeholder="Rent" />
-        <label class="small muted" style="margin-top:10px">Amount</label>
-        <input id="billAmt" inputmode="decimal" placeholder="1200.00" />
-        <label class="small muted" style="margin-top:10px">Due day (1–31)</label>
-        <input id="billDue" inputmode="numeric" placeholder="1" />
-        <div style="margin-top:10px"><button class="btn" id="billAdd">Add</button></div>
-
-        <div class="table-wrap" style="margin-top:14px">
-          <table class="tbl" id="billTable">
-            <thead><tr><th>Name</th><th class="right">$</th><th>Due day</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- CATCH-UP -->
-    <section id="catchup" class="page">
-      <div class="card">
-        <div class="card-title">Catch-Up Sh*t (one-offs)</div>
-        <label class="small muted">Name</label>
-        <input id="oneName" placeholder="Last month electric" />
-        <label class="small muted" style="margin-top:10px">Amount</label>
-        <input id="oneAmt" inputmode="decimal" placeholder="120.00" />
-        <div class="wiz check" style="margin-top:10px">
-          <input id="oneDefer" type="checkbox" checked />
-          <label for="oneDefer" class="small">Defer to next week if needed</label>
-        </div>
-        <div style="margin-top:10px"><button class="btn" id="oneAdd">Add item</button></div>
-
-        <div class="table-wrap" style="margin-top:14px">
-          <table class="tbl" id="oneTable">
-            <thead><tr><th>Name</th><th class="right">$</th><th>Defer?</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- BUCKETS -->
-    <section id="buckets" class="page">
-      <div class="card">
-        <div class="card-title">Where It Goes (buckets)</div>
-        <div class="form-grid">
-          <div>
-            <label class="small muted">Name</label>
-            <input id="bName" placeholder="Groceries" />
-          </div>
-          <div>
-            <label class="small muted">$/week</label>
-            <input id="bAmt" inputmode="decimal" placeholder="100.00" />
-          </div>
-        </div>
-        <div style="margin-top:10px"><button class="btn" id="bAdd">Add bucket</button></div>
-
-        <div class="table-wrap" style="margin-top:14px">
-          <table class="tbl" id="bTable">
-            <thead><tr><th>Name</th><th class="right">$ / wk</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- DEBTS -->
-    <section id="debts" class="page">
-      <div class="card">
-        <div class="card-title">Your Damn Debts</div>
-        <div class="form-grid">
-          <div>
-            <label class="small muted">Name</label>
-            <input id="dName" placeholder="Car loan" />
-          </div>
-          <div>
-            <label class="small muted">Min / week</label>
-            <input id="dMin" inputmode="decimal" placeholder="40.00" />
-          </div>
-        </div>
-        <div style="margin-top:10px"><button class="btn" id="dAdd">Add debt</button></div>
-
-        <div class="table-wrap" style="margin-top:14px">
-          <table class="tbl" id="dTable">
-            <thead><tr><th>Name</th><th class="right">Min / wk</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- DONATE -->
-    <section id="donate" class="page">
-      <div class="card">
-        <div class="card-title">Donate (optional)</div>
-        <a class="cta paypal" href="https://paypal.me/mdsdoc" target="_blank" rel="noopener">PayPal</a>
-        <a class="cta cashapp" href="https://cash.app/$mdsdoc" target="_blank" rel="noopener">Cash App</a>
-        <p class="small muted">Donations are appreciated, but they never unlock features and aren’t required.</p>
-      </div>
-    </section>
-
-    <!-- FEEDBACK -->
-    <section id="feedback" class="page">
-      <div class="card">
-        <div class="card-title">Feedback</div>
-        <label class="small muted">Type</label>
-        <select id="fbType">
-          <option>Idea</option>
-          <option>Bug</option>
-          <option>Question</option>
-        </select>
-
-        <label class="small muted" style="margin-top:10px">Message</label>
-        <textarea id="fbMsg" rows="5" placeholder="Tell us what rules, what sucks, or what broke…"></textarea>
-
-        <div class="wiz check" style="margin-top:10px">
-          <input id="fbMeta" type="checkbox" checked />
-          <label for="fbMeta" class="small">Include app version and device info</label>
-        </div>
-        <div class="wiz check" style="margin-top:8px">
-          <input id="fbAnon" type="checkbox" />
-          <label for="fbAnon" class="small">Send anonymously (ignore name/email)</label>
-        </div>
-
-        <div style="margin-top:12px"><button class="btn" id="fbSend">Send Feedback</button></div>
-        <div class="small muted" id="fbNote" style="margin-top:8px"></div>
-      </div>
-    </section>
-
-    <!-- SETTINGS -->
-    <section id="settings" class="page">
-      <div class="card">
-        <div class="card-title">Settings</div>
-        <div class="form-grid">
-          <div>
-            <label class="small muted">Bank balance</label>
-            <input id="bankBal" inputmode="decimal" placeholder="0" />
-          </div>
-          <div>
-            <label class="small muted">Payday weekday</label>
-            <select id="payday">
-              <option value="0">Sun</option><option value="1">Mon</option>
-              <option value="2">Tue</option><option value="3">Wed</option>
-              <option value="4">Thu</option><option value="5" selected>Fri</option>
-              <option value="6">Sat</option>
-            </select>
-          </div>
-        </div>
-        <div style="margin-top:10px; display:flex; gap:8px;">
-          <button class="btn" id="saveSettings">Save</button>
-          <button class="btn-secondary" id="runWizard">Run setup again</button>
-        </div>
-      </div>
-    </section>
+    <section id="bottomBanner" class="banner card">Bottom banner</section>
+    <div class="version">YDB v15.9.0</div>
   </main>
 
-  <div class="banner bottom">Bottom banner</div>
-
-  <footer class="foot">YDB v15.9.0 (LKG)</footer>
-
+  <!-- Wizard modal gets injected by wizard.js -->
   <script src="./app.js?v=15.9.0"></script>
-  <script src="./wizard.js?v=15.9.0"></script>
+  <script src="./wizard.js?v=15.9.0"></script> <!-- ensures pop-up modal -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js?v=15.9.0');
