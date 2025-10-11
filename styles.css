@@ -23,7 +23,7 @@ body{
 .app-header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#0d1b26,transparent);padding:10px 16px 4px}
 .brand{display:flex;align-items:center;gap:10px}
 .brand-coin{width:28px;height:28px;display:grid;place-items:center;border-radius:10px;background:#0f2c39;color:#33d5ff;font-weight:800}
-.brand-title{font-weight:800;font-size:20px}
+.brand-title{font-weight:800;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100vw - 84px)}
 
 /* banners */
 .banner{margin:10px 16px;padding:16px;border-radius:14px;background:#142633;color:#9fb3c3;border:1px dashed #264555;text-align:center}
@@ -99,7 +99,7 @@ textarea{resize:vertical}
 .cta.cashapp{background:#00d66b}
 .cta:active{transform:translateY(1px)}
 
-/* wizard toggle + checks */
+/* wizard / checks */
 .wiz.check{display:flex;align-items:center;gap:10px}
 .wiz.check input{width:auto}
 
