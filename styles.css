@@ -9,6 +9,7 @@
   --neg: #ff4d4d;
 }
 
+/* Reset and base */
 * {
   box-sizing: border-box;
 }
@@ -21,14 +22,12 @@ html, body {
   font: 16px/1.45 system-ui, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-small {
-  opacity: 0.8;
-}
-
+small { opacity: 0.8; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
 .center { text-align: center; }
 
+/* Header + branding */
 .app-header {
   position: sticky;
   top: 0;
@@ -57,6 +56,17 @@ small {
   font-weight: 800;
 }
 
+/* Fix name overlap */
+.brand-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100vw - 84px);
+}
+
+/* Tabs / Nav */
 .tabbar {
   display: flex;
   gap: 0.75rem;
@@ -75,6 +85,7 @@ small {
   background: var(--panel);
   color: var(--text);
   text-align: left;
+  transition: background 0.15s ease, outline 0.15s ease;
 }
 
 .tab small {
@@ -87,12 +98,14 @@ small {
   background: #0d2a3b;
 }
 
+/* Layout */
 main {
   padding: 12px;
   display: grid;
   gap: 14px;
 }
 
+/* Banners (ads placeholders) */
 .banner {
   border: 1px dashed #2b4d63;
   border-radius: 16px;
@@ -100,11 +113,14 @@ main {
   padding: 20px;
   text-align: center;
   color: var(--muted);
+  margin: 8px 0;
 }
 
+/* Pages */
 .page { display: none; }
 .page.active { display: block; }
 
+/* Cards */
 .card {
   background: var(--panel);
   border-radius: 20px;
@@ -119,6 +135,7 @@ main {
   margin-bottom: 10px;
 }
 
+/* Key value pairs */
 .kv {
   display: flex;
   justify-content: space-between;
@@ -131,6 +148,7 @@ main {
 .pos { color: var(--ok); }
 .neg { color: var(--neg); }
 
+/* Tables */
 .table-wrap {
   overflow: auto;
   border-radius: 12px;
@@ -152,11 +170,10 @@ main {
   color: var(--muted);
 }
 
-.tbl th.right, .tbl td.right {
-  text-align: right;
-}
+.tbl th.right, .tbl td.right { text-align: right; }
 
-.input, textarea, select {
+/* Inputs */
+input, textarea, select {
   width: 100%;
   background: #0e2130;
   border: 1px solid #24485b;
@@ -166,11 +183,12 @@ main {
   outline: none;
 }
 
-.input:focus, textarea:focus, select:focus {
+input:focus, textarea:focus, select:focus {
   border-color: #2db4d0;
   box-shadow: 0 0 0 2px #174b59 inset;
 }
 
+/* Buttons */
 .btn {
   background: var(--accent);
   border: 0;
@@ -178,11 +196,10 @@ main {
   border-radius: 16px;
   padding: 12px 14px;
   font-weight: 700;
+  cursor: pointer;
 }
 
-.btn:active {
-  transform: translateY(1px);
-}
+.btn:active { transform: translateY(1px); }
 
 .btn-secondary {
   background: #113247;
@@ -192,6 +209,7 @@ main {
   padding: 10px 12px;
 }
 
+/* Grid for forms */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -202,6 +220,7 @@ main {
   .form-grid { grid-template-columns: 1fr; }
 }
 
+/* CTA buttons for donate page */
 .cta {
   display: block;
   text-align: center;
@@ -213,11 +232,49 @@ main {
   text-decoration: none;
 }
 
-.cta.paypal {
-  background: #2c55e2;
+.cta.paypal { background: #2c55e2; }
+.cta.cashapp { background: #00d06e; color: #00371f; }
+
+/* Wizard overlay + inputs */
+.wizard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.cta.cashapp {
-  background: #00d06e;
-  color: #00371f;
+.wizard-box {
+  background: var(--panel);
+  border-radius: 24px;
+  width: 90%;
+  max-width: 420px;
+  padding: 24px;
+  box-shadow: 0 0 16px rgba(0,0,0,0.4);
+}
+
+/* Wizard checkbox fix */
+.wiz .check { display:flex; align-items:center; gap:.75rem; }
+.wiz input[type="checkbox"]{
+  appearance:none; -webkit-appearance:none;
+  width:22px; height:22px; border-radius:6px;
+  background:#0e2130; border:1.5px solid #2db4d0; position:relative;
+}
+.wiz input[type="checkbox"]:checked{
+  background:#16bac5; border-color:#16bac5;
+}
+.wiz input[type="checkbox"]:checked::after{
+  content:"✓"; position:absolute; inset:0;
+  display:grid; place-items:center; color:#00222b; font-weight:900; font-size:14px;
+}
+
+/* Footer version text */
+footer {
+  text-align: center;
+  padding: 20px 0 60px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
