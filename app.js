@@ -1,19 +1,17 @@
-/* YDB core – v15.9.1 – single-shell, single-wizard */
+/* YDB – Last Known Good (v15.8) */
+const STORE_KEY = 'ydb:data:v15.8';
+const VERSION = 'v15.8';
 
-const $ = sel => document.querySelector(sel);
-const $$ = sel => [...document.querySelectorAll(sel)];
-
-const STORE_KEY = 'ydb:data:v2';
-const VERSION = 'v15.9.1';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => (n<0?'-':'') + '$' + Math.abs(Number(n||0)).toFixed(2);
 
 const state = load() || seed();
-
 function seed(){
   return {
     version: VERSION,
-    lastWizard: null,
     bank: 0,
-    payday: 5, // 0=Sun
+    payday: 5, // Fri
     buckets: [], // {name, perWeek}
     bills: [],   // {name, amt, dueDay}
     ones: [],    // {name, amt, defer}
@@ -22,327 +20,248 @@ function seed(){
     feedbackUrl: 'https://script.google.com/macros/s/AKfycbzXvydQk3zrQ_g2h8JTBQwzxVa5QJgeMxM9kGsBqE_nsXCKTSMR3LZI_K0CcmA0MFWC/exec'
   };
 }
-
+function load(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)); }catch{ return null; } }
 function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-function load(){
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)); }
-  catch{ return null; }
-}
 
 /* ---------- Tabs ---------- */
-function bindTabs(){
-  $('#tabbar').addEventListener('click', (e)=>{
-    const btn = e.target.closest('.tab');
-    if(!btn) return;
-    const page = btn.dataset.page;
-    $$('.tab').forEach(t=>t.classList.toggle('active', t===btn));
-    $$('.page').forEach(p=>p.classList.toggle('active', p.id===page));
-    if(page==='home') renderHome();
-  });
+$('#tabbar').addEventListener('click', e=>{
+  const btn = e.target.closest('.tab'); if(!btn) return;
+  const page = btn.dataset.page;
+  $$('.tab').forEach(t=>t.classList.toggle('active', t===btn));
+  $$('.page').forEach(p=>p.classList.toggle('active', p.id===page));
+  if(page==='home') renderHome();
+});
+
+/* ---------- Helpers ---------- */
+function paydayRange(){
+  const d = new Date();
+  const now = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = now.getDay();
+  // window: current calendar week ending the coming payday (simple stable version)
+  const toPay = (state.payday - day + 7) % 7;
+  const end = new Date(now); end.setDate(now.getDate()+toPay);
+  const start = new Date(end); start.setDate(end.getDate()-6);
+  return {start,end};
 }
+const md = d => d.toLocaleDateString(undefined,{month:'short', day:'2-digit'});
 
-/* ---------- Money helpers ---------- */
-const fmt = n => (n<0?'-':'') + '$' + Math.abs(n).toFixed(2);
-
-/* Payday window (current week -> next payday) */
-function currentWindow(){
-  const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  // Find this week's payday
-  const day = d.getDay();
-  let daysToFri = (state.payday - day + 7) % 7;
-  const paydayDate = new Date(d); paydayDate.setDate(d.getDate() + daysToFri);
-  // Range is from last payday+1 to this payday, inclusive-ish for UI
-  const start = new Date(paydayDate); start.setDate(paydayDate.getDate()-6);
-  return { start, end: paydayDate };
-}
-
-function inWindow(d){
-  const {start,end} = currentWindow();
-  return d >= start && d <= end;
-}
-
-/* ---------- Render: Home ---------- */
+/* ---------- Render Home ---------- */
 function renderHome(){
-  // header subrange
-  const {start,end} = currentWindow();
-  const opts = { month:'short', day:'2-digit' };
-  $('#home-range').textContent = `${start.toLocaleDateString(undefined,opts)}–${end.toLocaleDateString(undefined,opts)} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][state.payday]} payday)`;
+  const {start,end} = paydayRange();
+  $('#home-range').textContent = `${md(start)}–${md(end)} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][state.payday]} payday)`;
 
-  // income this week: ONLY include paycheck on payday (not before)
-  let income = 0;
-  const today = new Date().getDay();
-  if(today === state.payday){
-    const gross = state.pay.base*state.pay.reg + (state.pay.base*state.pay.otMult*state.pay.ot);
-    const net = gross * (1 - state.pay.withheld);
-    income += net;
-  }
-  const bank = Number(state.bank)||0;
+  // income (simple/lkg): always include estimated net for display (user liked this version)
+  const gross = (state.pay.base*state.pay.reg) + (state.pay.base*state.pay.otMult*state.pay.ot);
+  const net = gross * (1 - state.pay.withheld);
+  const cash = Number(state.bank||0) + net;
 
-  // must-pays due within window
-  const due = state.bills
-    .map(b => ({...b, date: dayThisMonth(b.dueDay)}))
-    .filter(row => inWindow(row.date));
+  // due within this window (simple: by due day within month)
+  const dueRows = state.bills.map(b=>({
+    ...b,
+    date: new Date(new Date().getFullYear(), new Date().getMonth(), Math.min(31,Math.max(1, Number(b.dueDay))))
+  })).filter(r => r.date >= start && r.date <= end);
 
-  // catch-ups deferred logic: include only if not deferred or we still have slack
-  const onesDue = state.ones.filter(o => !o.defer || today === state.payday);
-
-  const mustTotal = due.reduce((s,b)=>s+Number(b.amt||0),0)
-                    + onesDue.reduce((s,o)=>s+Number(o.amt||0),0)
-                    + state.debts.reduce((s,d)=>s+Number(d.minWeek||0),0)
-                    + state.buckets.reduce((s,b)=>s+Number(b.perWeek||0),0); // buckets weekly
-
+  const onesNow = state.ones; // LKG behavior: include all one-offs
+  const bucketSum = state.buckets.reduce((s,b)=>s+Number(b.perWeek||0),0);
+  const debtMin = state.debts.reduce((s,d)=>s+Number(d.minWeek||0),0);
+  const billsSum = dueRows.reduce((s,b)=>s+Number(b.amt||0),0) + onesNow.reduce((s,o)=>s+Number(o.amt||0),0);
   const faf = 50;
-  const cash = bank + income;
-  const after = cash - mustTotal + faf;
+  const after = cash - (bucketSum + debtMin + billsSum) + faf;
 
   $('#cashThisWeek').textContent = fmt(cash);
-  $('#cashBreakdown').textContent = `Bank: ${fmt(bank)}${today===state.payday ? ` + Est. paycheck: ${fmt(income)}` : ''}`;
+  $('#cashBreakdown').textContent = `Bank: ${fmt(state.bank)} + Est. net paycheck: ${fmt(net)}`;
   $('#faf').textContent = fmt(faf);
-  const afterEl = $('#afterDamage');
-  afterEl.textContent = fmt(after);
-  afterEl.classList.toggle('pos', after>=0);
-  afterEl.classList.toggle('neg', after<0);
+  const AD = $('#afterDamage'); AD.textContent = fmt(after); AD.classList.toggle('neg', after<0); AD.classList.toggle('pos', after>=0);
 
-  // due table
-  const tb = $('#dueTable tbody');
-  tb.innerHTML = '';
-  for(const b of due){
+  // table
+  const tb = $('#dueTable tbody'); tb.innerHTML='';
+  for(const r of dueRows){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${md(b.date)}</td><td>${escapeHtml(b.name)}<br><small class="muted">bill</small></td><td class="right">${fmt(Number(b.amt||0))}</td><td><input type="checkbox" data-paid="${b.name}"></td>`;
+    tr.innerHTML = `<td>${md(r.date)}</td><td>${esc(r.name)}<br><small class="muted">bill</small></td><td class="right">${fmt(r.amt)}</td><td><input type="checkbox"></td>`;
     tb.appendChild(tr);
   }
 }
 
-function md(d){
-  return d.toLocaleDateString(undefined,{month:'short', day:'2-digit'});
-}
-function dayThisMonth(day){
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), Math.min(Math.max(1, Number(day)),31));
-}
-function escapeHtml(s=''){ return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+/* ---------- Forms ---------- */
+function esc(s=''){return s.replace(/[&<>"]/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]))}
 
-/* ---------- Donate / Feedback / Forms ---------- */
-function bindForms(){
-  // Bills
-  $('#billAdd').addEventListener('click', ()=>{
-    const name = $('#billName').value.trim();
-    const amt  = parseFloat($('#billAmt').value||'0');
-    const due  = parseInt($('#billDue').value||'1',10);
-    if(!name || !(amt>0)) return;
-    state.bills.push({name, amt, dueDay: due});
-    save(); paintBillTable();
-    $('#billName').value=''; $('#billAmt').value=''; $('#billDue').value='';
-    renderHome();
-  });
-  // Catch-ups
-  $('#oneAdd').addEventListener('click', ()=>{
-    const name=$('#oneName').value.trim();
-    const amt=parseFloat($('#oneAmt').value||'0');
-    const defer=$('#oneDefer').checked;
-    if(!name || !(amt>0)) return;
-    state.ones.push({name, amt, defer});
-    save(); paintOneTable();
-    $('#oneName').value=''; $('#oneAmt').value=''; $('#oneDefer').checked=true;
-    renderHome();
-  });
-  // Buckets
-  $('#bAdd').addEventListener('click', ()=>{
-    const name=$('#bName').value.trim();
-    const perWeek=parseFloat($('#bAmt').value||'0');
-    if(!name || !(perWeek>0)) return;
-    state.buckets.push({name, perWeek});
-    save(); paintBucketTable(); renderHome();
-    $('#bName').value=''; $('#bAmt').value='';
-  });
-  // Debts
-  $('#dAdd').addEventListener('click', ()=>{
-    const name=$('#dName').value.trim();
-    const minWeek=parseFloat($('#dMin').value||'0');
-    if(!name || !(minWeek>0)) return;
-    state.debts.push({name, minWeek});
-    save(); paintDebtTable(); renderHome();
-    $('#dName').value=''; $('#dMin').value='';
-  });
-
-  // Hours
-  $('#saveHours').addEventListener('click', ()=>{
-    state.pay.base = parseFloat($('#payBase').value||'0')||0;
-    state.pay.otMult = parseFloat($('#otMult').value||'1.5')||1.5;
-    state.pay.withheld = parseFloat($('#withheld').value||'0.2')||0.2;
-    state.pay.reg = parseFloat($('#hrsReg').value||'40')||40;
-    state.pay.ot = parseFloat($('#hrsOT').value||'0')||0;
-    save(); calcHours(); renderHome();
-  });
-  $('#applyExample').addEventListener('click', ()=>{
-    const gross = parseFloat($('#grossExample').value||'0');
-    if(!(gross>0)) return;
-    const net = gross * (1 - state.pay.withheld);
-    if(net<=0) return;
-    const inferred = 1 - (net/gross);
-    state.pay.withheld = Math.max(0, Math.min(0.6, inferred));
-    save(); calcHours();
-  });
-
-  // Settings
-  $('#saveSettings').addEventListener('click', ()=>{
-    state.bank = parseFloat($('#bankBal').value||'0')||0;
-    state.payday = parseInt($('#payday').value,10);
-    save(); renderHome();
-  });
-
-  // Afford
-  $('#affordAsk').addEventListener('click', ()=>{
-    const amt = parseFloat($('#affordAmt').value||'0');
-    if(!(amt>0)) return;
-    const msg = (Number($('#afterDamage').textContent.replace(/[$,]/g,'')) - amt) >= 0
-      ? "Yeah, you’re good."
-      : "You're about to fuck around and find out.";
-    $('#affordResult').textContent = msg;
-  });
-
-  // Feedback
-  $('#fbSend').addEventListener('click', async ()=>{
-    const type = $('#fbType').value;
-    const msg = $('#fbMsg').value.trim();
-    const anon = $('#fbAnon').checked;
-    const include = $('#fbMeta').checked;
-    if(!msg) return;
-    let payload = { type, message: msg };
-    if(include) payload.meta = { version: VERSION, ua: navigator.userAgent };
-    if(anon) payload.anon = true;
-    $('#fbNote').textContent = 'Sending…';
-    try{
-      const res = await fetch(state.feedbackUrl, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      if(!res.ok) throw new Error('bad');
-      $('#fbMsg').value = '';
-      $('#fbNote').textContent = 'Sent — thanks!';
-      setTimeout(()=>$('#fbNote').textContent='', 2500);
-    }catch(_){
-      $('#fbNote').textContent = 'Could not send. Try again later.';
-    }
-  });
-}
-
-/* Paint tables */
-function paintBillTable(){
-  const tb = $('#billTable tbody'); tb.innerHTML='';
+$('#billAdd').onclick = () => {
+  const name=$('#billName').value.trim();
+  const amt=parseFloat($('#billAmt').value||'0');
+  const due=parseInt($('#billDue').value||'1',10);
+  if(!name || !(amt>0)) return;
+  state.bills.push({name, amt, dueDay:due}); save();
+  $('#billName').value=''; $('#billAmt').value=''; $('#billDue').value='';
+  paintBills(); renderHome();
+};
+function paintBills(){
+  const tb=$('#billTable tbody'); tb.innerHTML='';
   state.bills.forEach((b,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${escapeHtml(b.name)}</td><td class="right">${fmt(b.amt)}</td><td>${b.dueDay}</td><td><button class="btn-secondary" data-del-b="${i}">Delete</button></td>`;
+    tr.innerHTML=`<td>${esc(b.name)}</td><td class="right">${fmt(b.amt)}</td><td>${b.dueDay}</td><td><button class="btn-secondary" data-del-b="${i}">Delete</button></td>`;
     tb.appendChild(tr);
   });
-  tb.addEventListener('click', (e)=>{
-    const btn=e.target.closest('[data-del-b]');
-    if(!btn) return;
-    const i=parseInt(btn.dataset.delB,10);
-    state.bills.splice(i,1); save(); paintBillTable(); renderHome();
-  }, {once:false});
+  tb.onclick = e=>{
+    const btn=e.target.closest('[data-del-b]'); if(!btn) return;
+    const i=+btn.dataset.delB; state.bills.splice(i,1); save(); paintBills(); renderHome();
+  };
 }
-function paintOneTable(){
+
+$('#oneAdd').onclick = () => {
+  const name=$('#oneName').value.trim();
+  const amt=parseFloat($('#oneAmt').value||'0');
+  const defer=$('#oneDefer').checked;
+  if(!name || !(amt>0)) return;
+  state.ones.push({name, amt, defer}); save();
+  $('#oneName').value=''; $('#oneAmt').value=''; $('#oneDefer').checked=true;
+  paintOnes(); renderHome();
+};
+function paintOnes(){
   const tb=$('#oneTable tbody'); tb.innerHTML='';
   state.ones.forEach((o,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${escapeHtml(o.name)}</td><td class="right">${fmt(o.amt)}</td><td>${o.defer?'Yes':'No'}</td><td><button class="btn-secondary" data-del-o="${i}">Delete</button></td>`;
+    tr.innerHTML=`<td>${esc(o.name)}</td><td class="right">${fmt(o.amt)}</td><td>${o.defer?'Yes':'No'}</td><td><button class="btn-secondary" data-del-o="${i}">Delete</button></td>`;
     tb.appendChild(tr);
   });
-  tb.addEventListener('click',(e)=>{
-    const btn=e.target.closest('[data-del-o]');
-    if(!btn) return;
-    const i=parseInt(btn.dataset.delO,10);
-    state.ones.splice(i,1); save(); paintOneTable(); renderHome();
-  },{once:false});
+  tb.onclick=e=>{
+    const btn=e.target.closest('[data-del-o]'); if(!btn) return;
+    const i=+btn.dataset.delO; state.ones.splice(i,1); save(); paintOnes(); renderHome();
+  };
 }
-function paintBucketTable(){
+
+$('#bAdd').onclick = () => {
+  const name=$('#bName').value.trim();
+  const perWeek=parseFloat($('#bAmt').value||'0');
+  if(!name || !(perWeek>0)) return;
+  state.buckets.push({name, perWeek}); save();
+  $('#bName').value=''; $('#bAmt').value='';
+  paintBuckets(); renderHome();
+};
+function paintBuckets(){
   const tb=$('#bTable tbody'); tb.innerHTML='';
   state.buckets.forEach((b,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${escapeHtml(b.name)}</td><td class="right">${fmt(b.perWeek)}</td><td><button class="btn-secondary" data-del-bu="${i}">Delete</button></td>`;
+    tr.innerHTML=`<td>${esc(b.name)}</td><td class="right">${fmt(b.perWeek)}</td><td><button class="btn-secondary" data-del-bu="${i}">Delete</button></td>`;
     tb.appendChild(tr);
   });
-  tb.addEventListener('click',(e)=>{
-    const btn=e.target.closest('[data-del-bu]');
-    if(!btn) return;
-    const i=parseInt(btn.dataset.delBu,10);
-    state.buckets.splice(i,1); save(); paintBucketTable(); renderHome();
-  },{once:false});
+  tb.onclick=e=>{
+    const btn=e.target.closest('[data-del-bu]'); if(!btn) return;
+    const i=+btn.dataset.delBu; state.buckets.splice(i,1); save(); paintBuckets(); renderHome();
+  };
 }
-function paintDebtTable(){
+
+$('#dAdd').onclick = () => {
+  const name=$('#dName').value.trim();
+  const minWeek=parseFloat($('#dMin').value||'0');
+  if(!name || !(minWeek>0)) return;
+  state.debts.push({name, minWeek}); save();
+  $('#dName').value=''; $('#dMin').value='';
+  paintDebts(); renderHome();
+};
+function paintDebts(){
   const tb=$('#dTable tbody'); tb.innerHTML='';
   state.debts.forEach((d,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${escapeHtml(d.name)}</td><td class="right">${fmt(d.minWeek)}</td><td><button class="btn-secondary" data-del-d="${i}">Delete</button></td>`;
+    tr.innerHTML=`<td>${esc(d.name)}</td><td class="right">${fmt(d.minWeek)}</td><td><button class="btn-secondary" data-del-d="${i}">Delete</button></td>`;
     tb.appendChild(tr);
   });
-  tb.addEventListener('click',(e)=>{
-    const btn=e.target.closest('[data-del-d]');
-    if(!btn) return;
-    const i=parseInt(btn.dataset.delD,10);
-    state.debts.splice(i,1); save(); paintDebtTable(); renderHome();
-  },{once:false});
+  tb.onclick=e=>{
+    const btn=e.target.closest('[data-del-d]'); if(!btn) return;
+    const i=+btn.dataset.delD; state.debts.splice(i,1); save(); paintDebts(); renderHome();
+  };
 }
 
-/* Hours calc */
+/* Hours + Pay */
 function calcHours(){
-  const gross = state.pay.base*state.pay.reg + (state.pay.base*state.pay.otMult*state.pay.ot);
-  const net = gross * (1 - state.pay.withheld);
+  const gross = (state.pay.base*state.pay.reg) + (state.pay.base*state.pay.otMult*state.pay.ot);
+  const net = gross*(1-state.pay.withheld);
   $('#grossW').textContent = fmt(gross);
   $('#netW').textContent = fmt(net);
   $('#whPct').textContent = (state.pay.withheld*100).toFixed(1)+'%';
 }
+$('#saveHours').onclick = ()=>{
+  state.pay.base=parseFloat($('#payBase').value||'0')||0;
+  state.pay.otMult=parseFloat($('#otMult').value||'1.5')||1.5;
+  state.pay.withheld=parseFloat($('#withheld').value||'0.2')||0.2;
+  state.pay.reg=parseFloat($('#hrsReg').value||'40')||40;
+  state.pay.ot=parseFloat($('#hrsOT').value||'0')||0;
+  save(); calcHours(); renderHome();
+};
+$('#applyExample').onclick = ()=>{
+  const g=parseFloat($('#grossExample').value||'0'); if(!(g>0)) return;
+  const inferred = state.pay.withheld; // keep simple in LKG
+  state.pay.withheld = Math.max(0, Math.min(0.6, inferred));
+  save(); calcHours();
+};
 
-/* ---------- Wizard (single) ---------- */
-function ensureWizardOnce(){
-  if($('.wizard-overlay')) return; // already present
-  if(state.lastWizard) return; // already finished once
+/* Settings */
+$('#saveSettings').onclick = ()=>{
+  state.bank=parseFloat($('#bankBal').value||'0')||0;
+  state.payday=parseInt($('#payday').value,10);
+  save(); renderHome();
+};
+$('#runWizard').onclick = openWizard;
 
-  const wrap = document.createElement('div');
-  wrap.className = 'wizard-overlay';
-  wrap.innerHTML = `
-    <div class="wizard-box wiz">
-      <div class="card-title" style="margin-top:-6px">Let’s set you up</div>
+/* Afford */
+$('#affordAsk').onclick = ()=>{
+  const amt = parseFloat($('#affordAmt').value||'0');
+  if(!(amt>0)) return;
+  const left = parseFloat($('#afterDamage').textContent.replace(/[$,]/g,'')) - amt;
+  $('#affordResult').textContent = left>=0 ? 'Yeah, you’re good.' : "You're about to fuck around and find out.";
+};
 
-      <label class="small muted" style="margin-top:6px">What’s in your account right now?</label>
-      <input id="wizBank" inputmode="decimal" placeholder="0" />
-      <small class="muted">Tip: You can enter negative if you’re overdrawn.</small>
+/* Feedback */
+$('#fbSend').onclick = async ()=>{
+  const type = $('#fbType').value;
+  const msg  = $('#fbMsg').value.trim();
+  const anon = $('#fbAnon').checked;
+  const include = $('#fbMeta').checked;
+  if(!msg){ $('#fbNote').textContent='Please add a message.'; return; }
+  $('#fbNote').textContent='Sending…';
+  try{
+    const body = { type, message: msg, anon };
+    if(include) body.meta = { version: VERSION, ua: navigator.userAgent };
+    const res = await fetch(state.feedbackUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    if(!res.ok) throw 0;
+    $('#fbMsg').value=''; $('#fbNote').textContent='Sent — thanks!'; setTimeout(()=>$('#fbNote').textContent='', 2500);
+  }catch(e){
+    $('#fbNote').textContent='Could not send. Try again later.';
+  }
+};
 
-      <label class="small muted" style="margin-top:12px">Payday weekday</label>
-      <select id="wizDay">
-        <option value="0">Sun</option><option value="1">Mon</option>
-        <option value="2">Tue</option><option value="3">Wed</option>
-        <option value="4">Thu</option><option value="5" selected>Fri</option>
-        <option value="6">Sat</option>
-      </select>
-
-      <div style="margin-top:14px; display:flex; gap:8px; justify-content:flex-end">
-        <button class="btn-secondary" id="wizSkip">Skip</button>
-        <button class="btn" id="wizNext">Save & Next</button>
-      </div>
-    </div>`;
+/* Wizard (on-demand only) */
+function openWizard(){
+  if($('.wizard-overlay')) return;
+  const wrap=document.createElement('div');
+  wrap.className='wizard-overlay';
+  wrap.innerHTML=`
+  <div class="wizard-card">
+    <div class="card-title">Let’s set you up</div>
+    <label class="small muted">What’s in your account right now?</label>
+    <input id="wizBank" inputmode="decimal" placeholder="0" />
+    <small class="muted">Tip: You can enter negative if you’re overdrawn.</small>
+    <label class="small muted" style="margin-top:12px">Payday weekday</label>
+    <select id="wizDay">
+      <option value="0">Sun</option><option value="1">Mon</option><option value="2">Tue</option>
+      <option value="3">Wed</option><option value="4">Thu</option><option value="5" selected>Fri</option>
+      <option value="6">Sat</option>
+    </select>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn-secondary" id="wizCancel">Cancel</button>
+      <button class="btn" id="wizSave">Save</button>
+    </div>
+  </div>`;
   document.body.appendChild(wrap);
-
-  $('#wizSkip').onclick = ()=> { state.lastWizard = Date.now(); save(); wrap.remove(); };
-  $('#wizNext').onclick = ()=>{
-    state.bank = parseFloat($('#wizBank').value||'0')||0;
-    state.payday = parseInt($('#wizDay').value,10);
-    state.lastWizard = Date.now();
+  $('#wizCancel').onclick=()=>wrap.remove();
+  $('#wizSave').onclick=()=>{
+    state.bank=parseFloat($('#wizBank').value||'0')||0;
+    state.payday=parseInt($('#wizDay').value,10);
     save(); renderHome(); wrap.remove();
   };
 }
 
-/* ---------- Init ---------- */
+/* Mount defaults / paint */
 function init(){
-  bindTabs();
-  bindForms();
-  paintBillTable(); paintOneTable(); paintBucketTable(); paintDebtTable();
-  calcHours(); renderHome();
-  ensureWizardOnce();
-  // settings form defaults
   $('#bankBal').value = state.bank;
   $('#payday').value = String(state.payday);
   $('#payBase').value = state.pay.base || '';
@@ -350,5 +269,8 @@ function init(){
   $('#withheld').value = state.pay.withheld || '';
   $('#hrsReg').value = state.pay.reg || 40;
   $('#hrsOT').value = state.pay.ot || 0;
+
+  paintBills(); paintOnes(); paintBuckets(); paintDebts();
+  calcHours(); renderHome();
 }
 document.addEventListener('DOMContentLoaded', init);
