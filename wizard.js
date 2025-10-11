@@ -1,7 +1,7 @@
-/* Your Damn Budget — Wizard v16.0.0 (adds payday step)
+/* Your Damn Budget — Wizard v16.0.1
    Steps: Bank → Payday → Hours → Bills → One-offs
-   - “Add bill” for first item; “Add another” afterwards
-   - Bank allows negative
+   - First bill button shows “Add bill”; after that “Add another”
+   - Bank allows negative values
 */
 (function () {
   const $ = s => document.querySelector(s);
@@ -131,10 +131,10 @@
       </div>
     `;
     el.querySelector('#wiz_base').onchange = e => { state.settings.baseRate = +e.target.value || 0; save(state); };
-    el.querySelector('#wiz_otm').onchange = e => { state.settings.otMultiplier = +e.target.value || 1.5; save(state); };
-    el.querySelector('#wiz_reg').onchange = e => { state.settings.regHours = +e.target.value || 0; save(state); };
-    el.querySelector('#wiz_oth').onchange = e => { state.settings.otHours = +e.target.value || 0; save(state); };
-    el.querySelector('#wiz_wh').onchange = e => { state.settings.withholding = +e.target.value || 0; save(state); };
+    el.querySelector('#wiz_otm').onchange  = e => { state.settings.otMultiplier = +e.target.value || 1.5; save(state); };
+    el.querySelector('#wiz_reg').onchange  = e => { state.settings.regHours = +e.target.value || 0; save(state); };
+    el.querySelector('#wiz_oth').onchange  = e => { state.settings.otHours = +e.target.value || 0; save(state); };
+    el.querySelector('#wiz_wh').onchange   = e => { state.settings.withholding = +e.target.value || 0; save(state); };
   }
 
   function stepBills(el) {
@@ -144,8 +144,8 @@
         <h3>Sh*t That Must Get Paid</h3>
         <div class="grid2">
           <input id="wiz_bill_name" class="input" placeholder="e.g., Rent">
-          <input id="wiz_bill_amt" class="input" type="number" inputmode="decimal" placeholder="Amount">
-          <input id="wiz_bill_day" class="input" type="number" inputmode="numeric" placeholder="Due day (1–31)">
+          <input id="wiz_bill_amt"  class="input" type="number" inputmode="decimal" placeholder="Amount">
+          <input id="wiz_bill_day"  class="input" type="number" inputmode="numeric" placeholder="Due day (1–31)">
           <button id="wiz_bill_add" class="btn">${bills.length ? 'Add another' : 'Add bill'}</button>
         </div>
         <div id="wiz_bill_list" class="list small"></div>
@@ -177,7 +177,7 @@
         <h3>Catch-Up Sh*t (one-offs)</h3>
         <div class="grid2">
           <input id="wiz_off_name" class="input" placeholder="e.g., Last month electric">
-          <input id="wiz_off_amt" class="input" type="number" inputmode="decimal" placeholder="Amount">
+          <input id="wiz_off_amt"  class="input" type="number" inputmode="decimal" placeholder="Amount">
           <input id="wiz_off_date" class="input" type="date">
           <label class="row"><input id="wiz_off_defer" type="checkbox" checked> Defer to next week if needed</label>
           <button id="wiz_off_add" class="btn">${offs.length ? 'Add another' : 'Add item'}</button>
