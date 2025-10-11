@@ -1,6 +1,6 @@
-/* YDB – Last Known Good (v15.8) */
-const STORE_KEY = 'ydb:data:v15.8';
-const VERSION = 'v15.8';
+/* YDB – v15.9.0 (LKG) */
+const STORE_KEY = 'ydb:data:v15.9.0';
+const VERSION = 'v15.9.0';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -37,7 +37,7 @@ function paydayRange(){
   const d = new Date();
   const now = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const day = now.getDay();
-  // window: current calendar week ending the coming payday (simple stable version)
+  // window: current calendar week ending the coming payday (simple & stable)
   const toPay = (state.payday - day + 7) % 7;
   const end = new Date(now); end.setDate(now.getDate()+toPay);
   const start = new Date(end); start.setDate(end.getDate()-6);
@@ -50,22 +50,21 @@ function renderHome(){
   const {start,end} = paydayRange();
   $('#home-range').textContent = `${md(start)}–${md(end)} (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][state.payday]} payday)`;
 
-  // income (simple/lkg): always include estimated net for display (user liked this version)
+  // income (LKG behavior): always include estimated net for display
   const gross = (state.pay.base*state.pay.reg) + (state.pay.base*state.pay.otMult*state.pay.ot);
   const net = gross * (1 - state.pay.withheld);
   const cash = Number(state.bank||0) + net;
 
-  // due within this window (simple: by due day within month)
   const dueRows = state.bills.map(b=>({
     ...b,
     date: new Date(new Date().getFullYear(), new Date().getMonth(), Math.min(31,Math.max(1, Number(b.dueDay))))
   })).filter(r => r.date >= start && r.date <= end);
 
-  const onesNow = state.ones; // LKG behavior: include all one-offs
+  const onesNow = state.ones; // LKG: include all one-offs
   const bucketSum = state.buckets.reduce((s,b)=>s+Number(b.perWeek||0),0);
   const debtMin = state.debts.reduce((s,d)=>s+Number(d.minWeek||0),0);
   const billsSum = dueRows.reduce((s,b)=>s+Number(b.amt||0),0) + onesNow.reduce((s,o)=>s+Number(o.amt||0),0);
-  const faf = 50;
+  const faf = 50; // fixed playful buffer
   const after = cash - (bucketSum + debtMin + billsSum) + faf;
 
   $('#cashThisWeek').textContent = fmt(cash);
@@ -189,7 +188,7 @@ $('#saveHours').onclick = ()=>{
 };
 $('#applyExample').onclick = ()=>{
   const g=parseFloat($('#grossExample').value||'0'); if(!(g>0)) return;
-  const inferred = state.pay.withheld; // keep simple in LKG
+  const inferred = state.pay.withheld; // remain simple in LKG
   state.pay.withheld = Math.max(0, Math.min(0.6, inferred));
   save(); calcHours();
 };
@@ -229,13 +228,13 @@ $('#fbSend').onclick = async ()=>{
   }
 };
 
-/* Wizard (on-demand only) */
+/* Wizard (manual; open from Settings) */
 function openWizard(){
   if($('.wizard-overlay')) return;
   const wrap=document.createElement('div');
   wrap.className='wizard-overlay';
   wrap.innerHTML=`
-  <div class="wizard-card">
+  <div class="wizard-card card">
     <div class="card-title">Let’s set you up</div>
     <label class="small muted">What’s in your account right now?</label>
     <input id="wizBank" inputmode="decimal" placeholder="0" />
